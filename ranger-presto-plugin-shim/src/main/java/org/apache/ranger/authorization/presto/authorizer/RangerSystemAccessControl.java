@@ -467,6 +467,26 @@ public class RangerSystemAccessControl
   }
 
   @Override
+  public void checkCanReadSystemInformation(SystemSecurityContext context) {
+    try {
+      activatePluginClassLoader();
+      systemAccessControlImpl.checkCanReadSystemInformation(context);
+    } finally {
+      deactivatePluginClassLoader();
+    }
+  }
+  
+  @Override
+  public void checkCanWriteSystemInformation(SystemSecurityContext context) {
+    try {
+      activatePluginClassLoader();
+      systemAccessControlImpl.checkCanWriteSystemInformation(context);
+    } finally {
+      deactivatePluginClassLoader();
+    }
+  }
+  
+  @Override
   public void checkCanSetUser(Optional<Principal> principal, String userName) {
     try {
       activatePluginClassLoader();

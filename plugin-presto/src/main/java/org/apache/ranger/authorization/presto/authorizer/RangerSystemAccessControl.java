@@ -229,7 +229,7 @@ public class RangerSystemAccessControl
     LOG.debug("==> RangerSystemAccessControl.filterCatalogs("+ catalogs + ")");
     Set<String> filteredCatalogs = new HashSet<>(catalogs.size());
     for (String catalog: catalogs) {
-      if (hasPermission(createResource(catalog), context, PrestoAccessType.SELECT)) {
+      if (hasPermission(createResource(catalog), context, PrestoAccessType.SHOW)) {
         filteredCatalogs.add(catalog);
       }
     }
@@ -241,7 +241,7 @@ public class RangerSystemAccessControl
     LOG.debug("==> RangerSystemAccessControl.filterSchemas(" + catalogName + ")");
     Set<String> filteredSchemaNames = new HashSet<>(schemaNames.size());
     for (String schemaName: schemaNames) {
-      if (hasPermission(createResource(catalogName, schemaName), context, PrestoAccessType.SELECT)) {
+      if (hasPermission(createResource(catalogName, schemaName), context, PrestoAccessType.SHOW)) {
         filteredSchemaNames.add(schemaName);
       }
     }
@@ -254,7 +254,7 @@ public class RangerSystemAccessControl
     Set<SchemaTableName> filteredTableNames = new HashSet<>(tableNames.size());
     for (SchemaTableName tableName : tableNames) {
       RangerPrestoResource res = createResource(catalogName, tableName.getSchemaName(), tableName.getTableName());
-      if (hasPermission(res, context, PrestoAccessType.SELECT)) {
+      if (hasPermission(res, context, PrestoAccessType.SHOW)) {
         filteredTableNames.add(tableName);
       }
     }
@@ -282,6 +282,14 @@ public class RangerSystemAccessControl
   }
 
   @Override
+  public void checkCanReadSystemInformation(SystemSecurityContext context) {
+    // pass as it is deprecated
+  }
+  @Override
+  public void checkCanWriteSystemInformation(SystemSecurityContext context) {
+    // pass as it is deprecated
+  }
+  @Override
   public void checkCanSetUser(Optional<Principal> principal, String userName) {
     // pass as it is deprecated
   }
@@ -306,18 +314,18 @@ public class RangerSystemAccessControl
 
   @Override
   public void checkCanAccessCatalog(SystemSecurityContext context, String catalogName) {
-    if (!hasPermission(createResource(catalogName), context, PrestoAccessType.USE)) {
-      LOG.debug("RangerSystemAccessControl.checkCanAccessCatalog(" + catalogName + ") denied");
-      AccessDeniedException.denyCatalogAccess(catalogName);
-    }
+    //if (!hasPermission(createResource(catalogName), context, PrestoAccessType.USE)) {
+    //  LOG.debug("RangerSystemAccessControl.checkCanAccessCatalog(" + catalogName + ") denied");
+    //  AccessDeniedException.denyCatalogAccess(catalogName);
+    //}
   }
 
   @Override
   public void checkCanShowSchemas(SystemSecurityContext context, String catalogName) {
-    if (!hasPermission(createResource(catalogName), context, PrestoAccessType.SHOW)) {
-      LOG.debug("RangerSystemAccessControl.checkCanShowSchemas(" + catalogName + ") denied");
-      AccessDeniedException.denyShowSchemas(catalogName);
-    }
+    //if (!hasPermission(createResource(catalogName), context, PrestoAccessType.SHOW)) {
+    //  LOG.debug("RangerSystemAccessControl.checkCanShowSchemas(" + catalogName + ") denied");
+    //  AccessDeniedException.denyShowSchemas(catalogName);
+    //}
   }
 
   /** SCHEMA **/
@@ -624,10 +632,10 @@ public class RangerSystemAccessControl
 
   @Override
   public void checkCanExecuteFunction(SystemSecurityContext context, String function) {
-    if (!hasPermission(createFunctionResource(function), context, PrestoAccessType.EXECUTE)) {
-      LOG.debug("RangerSystemAccessControl.checkCanExecuteFunction(" + function + ") denied");
-      AccessDeniedException.denyExecuteFunction(function);
-    }
+    //if (!hasPermission(createFunctionResource(function), context, PrestoAccessType.EXECUTE)) {
+    // LOG.debug("RangerSystemAccessControl.checkCanExecuteFunction(" + function + ") denied");
+    //  AccessDeniedException.denyExecuteFunction(function);
+    //}
   }
 
   /** PROCEDURES **/
