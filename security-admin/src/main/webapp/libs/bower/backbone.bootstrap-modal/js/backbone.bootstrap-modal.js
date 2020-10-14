@@ -1,6 +1,6 @@
 /**
  * Bootstrap Modal wrapper for use with Backbone.
- *
+ * 
  * Takes care of instantiation, manages multiple modals,
  * adds several options and removes the element from the DOM when closed
  *
@@ -19,35 +19,31 @@
   _.templateSettings = {
     interpolate: /\{\{(.+?)\}\}/g,
     evaluate: /<%([\s\S]+?)%>/g
-  };
+  }
 
   var template = _.template('\
-    <div class="modal-dialog modal-lg"><div class="modal-content">\
     <% if (title) { %>\
       <div class="modal-header">\
-        <h4 class="modal-title">{{title}}</h4>\
         <% if (allowCancel) { %>\
-          <a class="close">&times;</a>\
+          <a class="close">×</a>\
         <% } %>\
+        <h3>{{title}}</h3>\
       </div>\
     <% } %>\
     <div class="modal-body">{{content}}</div>\
-    <% if (showFooter) { %>\
-      <div class="modal-footer">\
-        <% if (allowCancel) { %>\
-          <% if (cancelText) { %>\
-            <a href="#" class="btn cancel btn-sm">{{cancelText}}</a>\
-          <% } %>\
+    <div class="modal-footer">\
+      <% if (allowCancel) { %>\
+        <% if (cancelText) { %>\
+          <a href="#" class="btn cancel">{{cancelText}}</a>\
         <% } %>\
-        <a href="#" class="btn ok btn-primary btn-sm">{{okText}}</a>\
-      </div>\
-    <% } %>\
-    </div></div>\
+      <% } %>\
+      <a href="#" class="btn ok btn-primary">{{okText}}</a>\
+    </div>\
   ');
 
   //Reset to users' template settings
   _.templateSettings = _interpolateBackup;
-
+  
 
   var Modal = Backbone.View.extend({
 
@@ -84,21 +80,6 @@
         if (this.options.okCloses) {
           this.close();
         }
-      },
-      'keypress': function(event) {
-        if (this.options.enterTriggersOk && event.which == 13) {
-          event.preventDefault();
-
-          this.trigger('ok');
-
-          if (this.options.content && this.options.content.trigger) {
-            this.options.content.trigger('ok', this);
-          }
-
-          if (this.options.okCloses) {
-            this.close();
-          }
-        }
       }
     },
 
@@ -108,15 +89,14 @@
      * @see http://twitter.github.com/bootstrap/javascript.html#modals
      *
      * @param {Object} options
-     * @param {String|View} [options.content]     Modal content. Default: none
-     * @param {String} [options.title]            Title. Default: none
-     * @param {String} [options.okText]           Text for the OK button. Default: 'OK'
-     * @param {String} [options.cancelText]       Text for the cancel button. Default: 'Cancel'. If passed a falsey value, the button will be removed
-     * @param {Boolean} [options.allowCancel      Whether the modal can be closed, other than by pressing OK. Default: true
-     * @param {Boolean} [options.escape]          Whether the 'esc' key can dismiss the modal. Default: true, but false if options.cancellable is true
-     * @param {Boolean} [options.animate]         Whether to animate in/out. Default: false
-     * @param {Function} [options.template]       Compiled underscore template to override the default one
-     * @param {Boolean} [options.enterTriggersOk] Whether the 'enter' key will trigger OK. Default: false
+     * @param {String|View} [options.content] Modal content. Default: none
+     * @param {String} [options.title]        Title. Default: none
+     * @param {String} [options.okText]       Text for the OK button. Default: 'OK'
+     * @param {String} [options.cancelText]   Text for the cancel button. Default: 'Cancel'. If passed a falsey value, the button will be removed
+     * @param {Boolean} [options.allowCancel  Whether the modal can be closed, other than by pressing OK. Default: true
+     * @param {Boolean} [options.escape]      Whether the 'esc' key can dismiss the modal. Default: true, but false if options.cancellable is true
+     * @param {Boolean} [options.animate]     Whether to animate in/out. Default: false
+     * @param {Function} [options.template]   Compiled underscore template to override the default one
      */
     initialize: function(options) {
       this.options = _.extend({
@@ -125,18 +105,16 @@
         focusOk: true,
         okCloses: true,
         cancelText: 'Cancel',
-        showFooter: true,
         allowCancel: true,
         escape: true,
         animate: false,
-        template: template,
-        enterTriggersOk: false
+        template: template
       }, options);
     },
 
     /**
      * Creates the DOM element
-     *
+     * 
      * @api private
      */
     render: function() {
@@ -150,7 +128,7 @@
       var $content = this.$content = $el.find('.modal-body')
 
       //Insert the main content if it's a view
-      if (content && content.$el) {
+      if (content.$el) {
         content.render();
         $el.find('.modal-body').html(content.$el);
       }
@@ -180,7 +158,7 @@
       }, this.options.modalOptions));
 
       //Focus OK button
-      $el.one('shown.bs.modal', function() {
+      $el.one('shown', function() {
         if (self.options.focusOk) {
           $el.find('.btn.ok').focus();
         }
@@ -209,7 +187,7 @@
 
           self.trigger('cancel');
         });
-
+        
         $(document).one('keyup.dismiss.modal', function (e) {
           e.which == 27 && self.trigger('cancel');
 
@@ -229,7 +207,7 @@
       if (cb) {
         self.on('ok', cb);
       }
-
+      
       return this;
     },
 
@@ -246,11 +224,7 @@
         return;
       }
 
-      $el.one('hidden.bs.modal', function onHidden(e) {
-        // Ignore events propagated from interior objects, like bootstrap tooltips
-        if(e.target !== e.currentTarget){
-          return $el.one('hidden', onHidden);
-        }
+      $el.one('hidden', function() {
         self.remove();
 
         if (self.options.content && self.options.content.trigger) {
@@ -285,7 +259,7 @@
   if (typeof require == 'function' && typeof module !== 'undefined' && exports) {
     module.exports = Modal;
   }
-  //Regular; add to Backbone.Bootstrap.Modal
+
   Backbone.BootstrapModal = Modal;
 
 })(jQuery, _, Backbone);

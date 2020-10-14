@@ -3,20 +3,15 @@
  *
  * 'data-*' attributes control where elements are placed
  */
-define(['jquery', 'underscore', 'backbone', 'backbone-forms'], function($, _, Backbone) {
+define(['jquery', 'underscore', 'backbone', 'backbone-forms', 'backbone-forms.list'], function($, _, Backbone) {
   var Form = Backbone.Form;
 
   
   /**
-   * Bootstrap 3 templates
+   * Bootstrap templates for Backbone Forms
    */
   Form.template = _.template('\
-    <form class="form-horizontal" role="form">\
-      <div data-fieldsets></div>\
-      <% if (submitButton) { %>\
-        <button type="submit" class="btn"><%= submitButton %></button>\
-      <% } %>\
-    </form>\
+    <form class="form-horizontal" data-fieldsets></form>\
   ');
 
 
@@ -30,12 +25,12 @@ define(['jquery', 'underscore', 'backbone', 'backbone-forms'], function($, _, Ba
 
 
   Form.Field.template = _.template('\
-    <div class="form-group field-<%= key %>">\
-      <label class="col-sm-3 control-label" for="<%= editorId %>"><%= title %></label>\
-      <div class="col-sm-4">\
+    <div class="control-group field-<%= key %>">\
+      <label class="control-label" for="<%= editorId %>"><%= title %></label>\
+      <div class="controls">\
         <span data-editor></span>\
-        <p class="help-block" data-error></p>\
-        <p class="help-block"><%= help %></p>\
+        <div class="help-inline" data-error></div>\
+        <div class="help-block"><%= help %></div>\
       </div>\
     </div>\
   ');
@@ -51,33 +46,21 @@ define(['jquery', 'underscore', 'backbone', 'backbone-forms'], function($, _, Ba
     </div>\
   ');
 
-  Form.editors.Base.prototype.className = 'form-control';
-  Form.Field.errorClassName = 'has-error';
+
+  Form.editors.List.template = _.template('\
+    <div class="bbf-list">\
+      <ul class="unstyled clearfix" data-items></ul>\
+      <button class="btn bbf-add" data-action="add">Add</button>\
+    </div>\
+  ');
 
 
-  if (Form.editors.List) {
-
-    Form.editors.List.template = _.template('\
-      <div class="bbf-list">\
-        <ul class="list-unstyled clearfix" data-items></ul>\
-        <button type="button" class="btn bbf-add" data-action="add">Add</button>\
-      </div>\
-    ');
-
-
-    Form.editors.List.Item.template = _.template('\
-      <li class="clearfix">\
-        <div class="pull-left" data-editor></div>\
-        <button type="button" class="btn bbf-del" data-action="remove">&times;</button>\
-      </li>\
-    ');
-    
-
-    Form.editors.List.Object.template = Form.editors.List.NestedModel.template = _.template('\
-      <div class="bbf-list-modal"><%= summary %></div>\
-    ');
-
-  }
+  Form.editors.List.Item.template = _.template('\
+    <li class="clearfix">\
+      <div class="pull-left" data-editor></div>\
+      <button type="button" class="btn bbf-del" data-action="remove">&times;</button>\
+    </li>\
+  ');
 
 
 });

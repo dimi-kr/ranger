@@ -457,18 +457,18 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 				policyRepository = policyEngine.getRepositoryForZone(zoneName);
 
 				ret = evaluatePoliciesNoAudit(request, policyType, zoneName, policyRepository, tagPolicyRepository);
-				ret.setZoneName(zoneName);
 
 				if (ret.getIsAllowed()) {
 					if (LOG.isDebugEnabled()) {
 						LOG.debug("Zone:[" + zoneName + "] allowed access. Completed processing other zones");
 					}
+					ret.setZoneName(zoneName);
 					break;
 				}
 			}
 		}
 
-		if (request.isAccessTypeAny() && (request.getResource() == null || CollectionUtils.isEmpty(request.getResource().getKeys())) && ret != null && !ret.getIsAllowed() && MapUtils.isNotEmpty(policyEngine.getZonePolicyRepositories())) {
+		if (request.isAccessTypeAny() && CollectionUtils.isEmpty(zoneNames) && ret != null && !ret.getIsAllowed() && MapUtils.isNotEmpty(policyEngine.getZonePolicyRepositories())) {
 			// resource is empty and access is ANY
 			if (LOG.isDebugEnabled()) {
 				LOG.debug("Process all security-zones");
@@ -515,8 +515,8 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 		final boolean            isSuperUser = isSuperUser(request.getUser(), request.getUserGroups());
 
 		// for superusers, set access as allowed
-		if (isSuperUser || StringUtils.equals(request.getAccessType(), RangerPolicyEngine.SUPER_USER_ACCESS)) {
-			ret.setIsAllowed(isSuperUser);
+		if (isSuperUser) {
+			ret.setIsAllowed(true);
 			ret.setIsAccessDetermined(true);
 			ret.setPolicyId(-1);
 			ret.setPolicyPriority(Integer.MAX_VALUE);

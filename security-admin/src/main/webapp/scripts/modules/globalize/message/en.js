@@ -284,9 +284,7 @@ define(function(require) {
                 clientIP                        : 'Client IP',
                 eventCount                      : 'Event Count',
                 tags                            : 'Tags',
-                permission                      : 'Permission',
-                override                        : 'Override',
-                normal                          : 'Normal'
+                permission                      : 'Permission'
 
 			},
 			btn : {
@@ -360,7 +358,6 @@ define(function(require) {
                 serviceTypeMsg              :'Select type of service.',
                 startDate                   :'Set start date.',
                 userMsg                     :'Name of User.',
-                roleMsg                     :'Name of Role.',
                 application                 :'Application.',
                 tagsMsg                     :'Tag Name.',
                 endDate                     :'Set end date.',

@@ -331,12 +331,10 @@ public class RangerRESTClient {
 
 	private TrustManager[] getTrustManagers() {
 		TrustManager[] tmList = null;
-		if (StringUtils.isNotEmpty(mTrustStoreURL) && StringUtils.isNotEmpty(mTrustStoreAlias)) {
-			String trustStoreFilepwd = getCredential(mTrustStoreURL, mTrustStoreAlias);
-			if (StringUtils.isNotEmpty(trustStoreFilepwd)) {
-				tmList = getTrustManagers(mTrustStoreFile, trustStoreFilepwd);
-			}
-		}
+
+		String trustStoreFilepwd = getCredential(mTrustStoreURL, mTrustStoreAlias);
+
+		tmList = getTrustManagers(mTrustStoreFile, trustStoreFilepwd);
 		return tmList;
 	}
 
@@ -387,19 +385,7 @@ public class RangerRESTClient {
 	}
 
 	protected SSLContext getSSLContext(KeyManager[] kmList, TrustManager[] tmList) {
-		if (tmList == null) {
-			try {
-			 String algo = TrustManagerFactory.getDefaultAlgorithm() ;
-			 TrustManagerFactory tmf =  TrustManagerFactory.getInstance(algo) ;
-			 tmf.init((KeyStore)null) ;
-			 tmList = tmf.getTrustManagers() ;
-			}
-			catch(NoSuchAlgorithmException | KeyStoreException | IllegalStateException  e) {
-				LOG.error("Unable to get the default SSL TrustStore for the JVM",e);
-				tmList = null;
-			}
-		}
-	    Validate.notNull(tmList, "TrustManager is not specified");
+	        Validate.notNull(tmList, "TrustManager is not specified");
 		try {
 			SSLContext sslContext = SSLContext.getInstance(RANGER_SSL_CONTEXT_ALGO_TYPE);
 

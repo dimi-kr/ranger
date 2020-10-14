@@ -139,7 +139,6 @@ import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyItemAccess;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyItemCondition;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyResource;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerRowFilterPolicyItem;
-import org.apache.ranger.plugin.model.RangerSecurityZone.RangerSecurityZoneService;
 import org.apache.ranger.plugin.model.RangerPolicyResourceSignature;
 import org.apache.ranger.plugin.model.RangerService;
 import org.apache.ranger.plugin.model.RangerServiceDef;
@@ -193,6 +192,7 @@ import org.apache.ranger.view.VXMetricServiceNameCount;
 import org.apache.ranger.view.VXMetricUserGroupCount;
 import org.apache.ranger.view.VXPolicyLabelList;
 import org.apache.ranger.view.VXPortalUser;
+import org.apache.ranger.view.VXResponse;
 import org.apache.ranger.view.VXString;
 import org.apache.ranger.view.VXUser;
 import org.apache.ranger.view.VXUserList;
@@ -280,54 +280,54 @@ public class ServiceDBStore extends AbstractServiceStore {
 	@Autowired
 	RangerPolicyLabelHelper policyLabelsHelper;
 
-	@Autowired
+        @Autowired
 	XUserService xUserService;
-
+	
 	@Autowired
 	XUserMgr xUserMgr;
 
-	@Autowired
-	XGroupService xGroupService;
+    @Autowired
+    XGroupService xGroupService;
 
-	@Autowired
+    @Autowired
 	PolicyRefUpdater policyRefUpdater;
 
 	@Autowired
 	RangerDataHistService dataHistService;
 
-	@Autowired
-	@Qualifier(value = "transactionManager")
-	PlatformTransactionManager txManager;
+    @Autowired
+    @Qualifier(value = "transactionManager")
+    PlatformTransactionManager txManager;
 
-	@Autowired
-	RangerBizUtil bizUtil;
+    @Autowired
+    RangerBizUtil bizUtil;
 
-	@Autowired
-	RangerPolicyWithAssignedIdService assignedIdPolicyService;
+    @Autowired
+    RangerPolicyWithAssignedIdService assignedIdPolicyService;
 
-	@Autowired
-	RangerServiceWithAssignedIdService svcServiceWithAssignedId;
+    @Autowired
+    RangerServiceWithAssignedIdService svcServiceWithAssignedId;
 
-	@Autowired
-	RangerServiceDefWithAssignedIdService svcDefServiceWithAssignedId;
+    @Autowired
+    RangerServiceDefWithAssignedIdService svcDefServiceWithAssignedId;
 
-	@Autowired
-	RangerFactory factory;
-
-	@Autowired
-	JSONUtil jsonUtil;
+    @Autowired
+    RangerFactory factory;
+    
+    @Autowired
+    JSONUtil jsonUtil;
 
 	@Autowired
 	ServiceMgr serviceMgr;
 
-	@Autowired
-	AssetMgr assetMgr;
+        @Autowired
+        AssetMgr assetMgr;
 
 	@Autowired
 	RangerTransactionSynchronizationAdapter transactionSynchronizationAdapter;
 
 	@Autowired
-	RangerSecurityZoneServiceService securityZoneService;
+    RangerSecurityZoneServiceService securityZoneService;
 
 	@Autowired
 	RoleDBStore roleStore;
@@ -338,12 +338,9 @@ public class ServiceDBStore extends AbstractServiceStore {
 	@Autowired
 	UserMgr userMgr;
 
-	@Autowired
-	SecurityZoneDBStore securityZoneStore;
-
 	private static volatile boolean legacyServiceDefsInitDone = false;
 	private Boolean populateExistingBaseFields = false;
-
+	
 	public static final String HIDDEN_PASSWORD_STR = "*****";
 	public static final String CONFIG_KEY_PASSWORD = "password";
 	public static final String ACCESS_TYPE_DECRYPT_EEK    = "decrypteek";
@@ -397,7 +394,6 @@ public class ServiceDBStore extends AbstractServiceStore {
 								resetPolicyUpdateLog(RETENTION_PERIOD_IN_DAYS, RangerPolicyDelta.CHANGE_TYPE_RANGER_ADMIN_START);
 								resetTagUpdateLog(TAG_RETENTION_PERIOD_IN_DAYS, ServiceTags.TagsChangeType.RANGER_ADMIN_START);
 								//createUnzonedSecurityZone();
-								initRMSDaos();
 								return null;
 							}
 						});
@@ -1773,10 +1769,7 @@ public class ServiceDBStore extends AbstractServiceStore {
 		if(service == null) {
 			throw new Exception("no service exists with ID=" + id);
 		}
-
-		// Manage zone
-		disassociateZonesForService(service); //RANGER-3016
-
+		restrictIfZoneService(service);
 		List<Long> policyIds = daoMgr.getXXPolicy().findPolicyIdsByServiceId(service.getId());
 		if (CollectionUtils.isNotEmpty(policyIds)) {
 			long totalDeletedPolicies = 0;
@@ -1797,9 +1790,6 @@ public class ServiceDBStore extends AbstractServiceStore {
 		for (XXServiceConfigMap configMap : configs) {
 			configDao.remove(configMap);
 		}
-
-		// Purge x_rms data
-		daoMgr.getXXRMSServiceResource().purge(service.getId());
 
 		Long version = service.getVersion();
 		if(version == null) {
@@ -1854,6 +1844,21 @@ public class ServiceDBStore extends AbstractServiceStore {
 					}
 				}
 			}
+		}
+	}
+
+	private void restrictIfZoneService(RangerService service)
+	{
+		String serviceName = service.getName();
+		List<String> zonesNameList = daoMgr.getXXSecurityZoneDao().findZonesByServiceName(serviceName);
+		if (CollectionUtils.isNotEmpty(zonesNameList)) {
+			LOG.info("Can not delete service : " + serviceName
+					+ ", as it is already associated with " + zonesNameList.size() + " zones : " + zonesNameList);
+			VXResponse vXResponse = new VXResponse();
+			vXResponse.setStatusCode(HttpServletResponse.SC_BAD_REQUEST);
+			vXResponse.setMsgDesc("Can not delete service : " + serviceName
+					+ ", as it is already associated with " + zonesNameList.size() + " zones : " + zonesNameList);
+			throw restErrorUtil.generateRESTException(vXResponse);
 		}
 	}
 
@@ -3102,10 +3107,6 @@ public class ServiceDBStore extends AbstractServiceStore {
 			if (CollectionUtils.isNotEmpty(resourcePolicyDeltas)) {
 				isValid = RangerPolicyDeltaUtil.isValidDeltas(resourcePolicyDeltas, componentServiceType);
 
-				if (!isValid) {
-					LOG.warn("Resource policy-Deltas :[" + resourcePolicyDeltas + "] from version :[" + lastKnownVersion + "] are not valid");
-				}
-
 				if (isValid && tagService != null) {
 					Long id = resourcePolicyDeltas.get(0).getId();
 					tagPolicyDeltas = daoMgr.getXXPolicyChangeLog().findGreaterThan(policyService, id, tagService.getId());
@@ -3115,10 +3116,6 @@ public class ServiceDBStore extends AbstractServiceStore {
 						String tagServiceType = tagServiceDef.getName();
 
 						isValid = RangerPolicyDeltaUtil.isValidDeltas(tagPolicyDeltas, tagServiceType);
-
-						if (!isValid) {
-							LOG.warn("Tag policy-Deltas :[" + tagPolicyDeltas + "] for service-version :[" + lastKnownVersion + "] and delta-id :[" + id + "] are not valid");
-						}
 					}
 				}
 
@@ -3143,12 +3140,8 @@ public class ServiceDBStore extends AbstractServiceStore {
 							tagPolicies.setPolicies(null);
 							ret.setTagPolicies(tagPolicies);
 						}
-					} else {
-						LOG.warn("Deltas :[" + resourcePolicyDeltas + "] from version :[" + lastKnownVersion + "] after compressing are null!");
 					}
 				}
-			} else {
-				LOG.warn("No policy-deltas found for serviceId=" + service.getId() + ", tagServiceId=" + (tagService != null ? tagService.getId() : null) + ", lastKnownVersion=" + lastKnownVersion + ")");
 			}
 		}
 
@@ -4900,14 +4893,6 @@ public class ServiceDBStore extends AbstractServiceStore {
 		xUserService.createXUserWithOutLogin(genericUser);
 	}
 
-	private void initRMSDaos() {
-		daoMgr.getXXService();
-		daoMgr.getXXRMSMappingProvider();
-		daoMgr.getXXRMSNotification();
-		daoMgr.getXXRMSServiceResource();
-		daoMgr.getXXRMSResourceMapping();
-	}
-
 	public void resetPolicyUpdateLog(int retentionInDays, Integer policyChangeType) {
 		if (LOG.isDebugEnabled()) {
 			LOG.debug("==> resetPolicyUpdateLog(" + retentionInDays + ", " + policyChangeType + ")");
@@ -5484,31 +5469,4 @@ public class ServiceDBStore extends AbstractServiceStore {
 		return ret;
 	}
 
-	/**
-	 * Removes given service from security zones.
-	 * And if given service is the only service
-	 * associated with security zone, remove zone.
-	 * @param service
-	 * @throws Exception
-	 */
-	private void disassociateZonesForService(RangerService service) throws Exception {
-		String serviceName = service.getName();
-		List<String> zonesNameList = daoMgr.getXXSecurityZoneDao().findZonesByServiceName(serviceName);
-		if (CollectionUtils.isNotEmpty(zonesNameList)) {
-			for (String zoneName : zonesNameList) {
-				RangerSecurityZone securityZone = securityZoneStore.getSecurityZoneByName(zoneName);
-				Map<String, RangerSecurityZoneService> zoneServices = securityZone.getServices();
-
-				if (zoneServices != null && !zoneServices.isEmpty()) {
-					zoneServices.remove(serviceName);
-					securityZone.setServices(zoneServices);
-					securityZoneStore.updateSecurityZoneById(securityZone);
-
-					if (zoneServices.isEmpty()) {
-						securityZoneStore.deleteSecurityZoneByName(zoneName);
-					}
-				}
-			}
-		}
-	}
 }

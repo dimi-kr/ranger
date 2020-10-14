@@ -19,6 +19,7 @@
   <id>hive-plugin</id>
   <formats>
     <format>tar.gz</format>
+    <format>zip</format>
   </formats>
   <baseDirectory>${project.parent.name}-${project.version}-hive-plugin</baseDirectory>
   <includeBaseDirectory>true</includeBaseDirectory>

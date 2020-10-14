@@ -61,7 +61,6 @@ define(function(require) {
 
         initialize: function(options) {
             console.log("initialized a Security Zone");
-            _.extend(this, _.pick(options, 'rangerService', 'zoneId'));
             var that = this;
             this.zoneResourcesColl = new RangerPolicyResourceList();
         },
@@ -107,7 +106,7 @@ define(function(require) {
         },
 
         getZoneModel: function() {
-           this.zoneModel = this.collection.get(this.zoneId);
+           this.zoneModel = this.collection.get(this.options.zoneId);
             if(_.isUndefined(this.zoneModel)){
                 this.zoneModel = _.first(this.collection.models);
             }
@@ -118,7 +117,7 @@ define(function(require) {
             var that = this, resources = [];
             if(zoneModel){
                 _.each(zoneModel.get('services'), function(value, key) {
-                    var serviceType = that.rangerService.models.find(function(m) {
+                    var serviceType = that.options.rangerService.models.find(function(m) {
                         if (m.get('name') == key)
                             return m.get('type')
                     })
@@ -221,7 +220,6 @@ define(function(require) {
                 includeFilter: false,
                 includePagination: false,
                 gridOpts: {
-                    row: Backgrid.Row.extend({}),
                     header: XABackgrid,
                     emptyText: 'No Zone Data Found!!'
                 }
@@ -277,8 +275,7 @@ define(function(require) {
                 content: view,
                 title: 'Zone Administration',
                 allowCancel: true,
-                escape: true,
-                focusOk : false
+                escape: true
             }).open();
         },
 
@@ -330,7 +327,7 @@ define(function(require) {
         },
 
         toggleForZoneServiceTbl : function(e) {
-           $(e.currentTarget).children().toggleClass('fa-chevron-down');
+           $(e.currentTarget).children().toggleClass('icon-chevron-down');
            $(e.currentTarget).next().slideToggle();
         },
 

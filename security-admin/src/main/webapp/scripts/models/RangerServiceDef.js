@@ -95,6 +95,7 @@ define(function(require){
 			return { 
 				closeOnSelect : true,
 				placeholder : 'Select Tag Service',
+				width :'220px',
 				allowClear: true,
 				initSelection : function (element, callback) {
                                         var rangerService = new RangerService()

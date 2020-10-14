@@ -22,10 +22,9 @@
 	'backbone.marionette',
 	'utils/XALangSupport',
 	'models/VAppState',
-	'utils/XAUtils',
-	'bootbox'
+	'utils/XAUtils'
 ],
-function(Backbone, Marionette, localization, MAppState, XAUtil, bootbox){
+function(Backbone, Marionette, localization, MAppState, XAUtil){
     'use strict';
 
 	return Backbone.Marionette.AppRouter.extend({
@@ -98,7 +97,7 @@ function(Backbone, Marionette, localization, MAppState, XAUtil, bootbox){
 				if (window._preventNavigation && formStatus) {
 					bootbox.dialog(window._preventNavigationMsg, [{
 						"label": "Stay on this page!",
-						"class": "btn-success btn-sm",
+						"class": "btn-success btn-small",
 						"callback": function() {
 							router.navigate(MAppState.get('previousFragment'), {
 								trigger: false
@@ -106,7 +105,7 @@ function(Backbone, Marionette, localization, MAppState, XAUtil, bootbox){
 						}
 					}, {
 						"label": "Leave this page",
-						"class": "btn-danger btn-sm",
+						"class": "btn-danger btn-small",
 						"callback": function() {
 							XAUtil.allowNavigation();
 							proceedWithCallback();

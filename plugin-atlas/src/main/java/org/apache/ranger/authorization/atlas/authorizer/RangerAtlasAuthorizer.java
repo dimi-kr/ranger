@@ -25,13 +25,10 @@ import org.apache.atlas.authorize.AtlasAuthorizationException;
 import org.apache.atlas.authorize.AtlasEntityAccessRequest;
 import org.apache.atlas.authorize.AtlasSearchResultScrubRequest;
 import org.apache.atlas.authorize.AtlasRelationshipAccessRequest;
-import org.apache.atlas.authorize.AtlasTypesDefFilterRequest;
+
 import org.apache.atlas.authorize.AtlasTypeAccessRequest;
-import org.apache.atlas.authorize.AtlasAccessRequest;
 import org.apache.atlas.authorize.AtlasAuthorizer;
 import org.apache.atlas.authorize.AtlasPrivilege;
-import org.apache.atlas.model.typedef.AtlasBaseTypeDef;
-import org.apache.atlas.model.typedef.AtlasTypesDef;
 import org.apache.atlas.model.discovery.AtlasSearchResult;
 import org.apache.atlas.model.instance.AtlasEntityHeader;
 import org.apache.commons.collections.CollectionUtils;
@@ -193,14 +190,7 @@ public class RangerAtlasAuthorizer implements AtlasAuthorizer {
             rangerRequest.setForwardedAddresses(request.getForwardedAddresses());
             rangerRequest.setRemoteIPAddress(request.getRemoteIPAddress());
 
-            boolean isAuditDisabled = ACCESS_TYPE_TYPE_READ.equalsIgnoreCase(action);
-
-            if (isAuditDisabled) {
-                ret = checkAccess(rangerRequest, null);
-            } else {
-                ret = checkAccess(rangerRequest);
-            }
-
+            ret = checkAccess(rangerRequest);
         } finally {
             RangerPerfTracer.log(perf);
         }
@@ -211,8 +201,6 @@ public class RangerAtlasAuthorizer implements AtlasAuthorizer {
 
         return ret;
     }
-
-
 
     public boolean isAccessAllowed(AtlasRelationshipAccessRequest request) throws AtlasAuthorizationException {
         if (LOG.isDebugEnabled()) {
@@ -328,38 +316,6 @@ public class RangerAtlasAuthorizer implements AtlasAuthorizer {
             LOG.debug("<== scrubSearchResults(): " + request);
         }
     }
-
-    @Override
-    public void filterTypesDef(AtlasTypesDefFilterRequest request) throws AtlasAuthorizationException {
-
-        AtlasTypesDef typesDef = request.getTypesDef();
-
-        filterTypes(request, typesDef.getEnumDefs());
-        filterTypes(request, typesDef.getStructDefs());
-        filterTypes(request, typesDef.getEntityDefs());
-        filterTypes(request, typesDef.getClassificationDefs());
-        filterTypes(request, typesDef.getRelationshipDefs());
-        filterTypes(request, typesDef.getBusinessMetadataDefs());
-
-    }
-
-    private void filterTypes(AtlasAccessRequest request, List<? extends AtlasBaseTypeDef> typeDefs)throws AtlasAuthorizationException {
-        if (typeDefs != null) {
-            for (ListIterator<? extends AtlasBaseTypeDef> iter = typeDefs.listIterator(); iter.hasNext();) {
-                AtlasBaseTypeDef       typeDef     = iter.next();
-                AtlasTypeAccessRequest typeRequest = new AtlasTypeAccessRequest(request.getAction(), typeDef, request.getUser(), request.getUserGroups());
-
-                typeRequest.setClientIPAddress(request.getClientIPAddress());
-                typeRequest.setForwardedAddresses(request.getForwardedAddresses());
-                typeRequest.setRemoteIPAddress(request.getRemoteIPAddress());
-
-                if (!isAccessAllowed(typeRequest)) {
-                    iter.remove();
-                }
-            }
-        }
-    }
-
 
     private RangerServiceDef getServiceDef() {
         RangerBasePlugin plugin = atlasPlugin;

@@ -19,6 +19,7 @@
   <id>hbase-plugin</id>
   <formats>
     <format>tar.gz</format>
+    <format>zip</format>
   </formats>
   <baseDirectory>${project.parent.name}-${project.version}-hbase-plugin</baseDirectory>
   <includeBaseDirectory>true</includeBaseDirectory>
@@ -53,11 +54,12 @@
         <directoryMode>755</directoryMode>
         <fileMode>644</fileMode>
         <includes>
-          <include>com.sun.jersey:jersey-client:jar:${jersey-bundle.version}</include>
-          <include>com.sun.jersey:jersey-core:jar:${jersey-bundle.version}</include>
+          <include>com.google.code.gson:gson*</include>
           <include>org.eclipse.persistence:eclipselink</include>
           <include>org.eclipse.persistence:javax.persistence</include>
           <include>org.apache.httpcomponents:httpmime:jar:${httpcomponents.httpmime.version}</include>
+          <include>org.apache.httpcomponents:httpclient:jar:${httpcomponents.httpclient.version}</include>
+          <include>org.apache.httpcomponents:httpcore:jar:${httpcomponents.httpcore.version}</include>
           <include>org.noggit:noggit:jar:${noggit.version}</include>
           <include>org.apache.solr:solr-solrj</include>
           <include>com.google.guava:guava:jar:${google.guava.version}</include>
@@ -71,6 +73,7 @@
           <include>org.elasticsearch.client:elasticsearch-rest-high-level-client</include>
           <include>org.elasticsearch.plugin:rank-eval-client</include>
           <include>org.elasticsearch.plugin:lang-mustache-client</include>
+          <include>org.apache.httpcomponents:httpcore-nio:jar:${httpcomponents.httpcore.version}</include>
           <include>org.apache.httpcomponents:httpasyncclient:jar:${httpcomponents.httpasyncclient.version}</include>
           <include>org.apache.lucene:lucene-core</include>
           <include>joda-time:joda-time</include>

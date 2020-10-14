@@ -64,7 +64,6 @@ function ( Backbone, App, RegionManager, AppRouter, AppController, NewAppControl
 	};
 
 	try{
-		window.Backbone = Backbone;
 		startApp();
 		mainModule.success = true;
 	}

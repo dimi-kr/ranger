@@ -229,9 +229,6 @@ define(function(require) {
 
                 }
             },
-            toString : function(){
-                return this.get('name');
-            },
         }, {
             // static class members
         });

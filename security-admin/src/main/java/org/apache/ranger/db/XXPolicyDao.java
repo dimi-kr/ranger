@@ -251,26 +251,4 @@ public class XXPolicyDao extends BaseDao<XXPolicy> {
 		}
 		return ret;
 	}
-
-	public XXPolicy findPolicy(String policyName, String serviceName, String zoneName) {
-		if (policyName == null || serviceName == null) {
-			return null;
-		}
-
-		try {
-			if (zoneName == null) {
-				return getEntityManager().createNamedQuery("XXPolicy.findPolicyByPolicyNameAndServiceName", tClass)
-						.setParameter("policyName", policyName).setParameter("serviceName", serviceName)
-						.getSingleResult();
-			} else {
-				return getEntityManager()
-						.createNamedQuery("XXPolicy.findPolicyByPolicyNameAndServiceNameAndZoneName", tClass)
-						.setParameter("policyName", policyName).setParameter("serviceName", serviceName)
-						.setParameter("zoneName", zoneName).getSingleResult();
-			}
-		} catch (NoResultException e) {
-			return null;
-		}
-
-	}
 }

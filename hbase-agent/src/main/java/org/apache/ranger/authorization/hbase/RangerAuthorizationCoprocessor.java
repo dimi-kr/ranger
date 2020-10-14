@@ -26,8 +26,6 @@ import java.security.PrivilegedExceptionAction;
 import com.google.protobuf.Message;
 import com.google.protobuf.Service;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.MapUtils;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -311,7 +309,7 @@ public class RangerAuthorizationCoprocessor implements AccessControlService.Inte
 	}
 	
 	ColumnFamilyAccessResult evaluateAccess(ObserverContext<?> ctx, String operation, Action action, final RegionCoprocessorEnvironment env,
-											final Map<byte[], ? extends Collection<?>> familyMap, String commandStr) throws AccessDeniedException {
+											final Map<byte[], ? extends Collection<?>> familyMap) throws AccessDeniedException {
 
 		String access = _authUtils.getAccess(action);
 		User user = getActiveUser(ctx);
@@ -347,7 +345,6 @@ public class RangerAuthorizationCoprocessor implements AccessControlService.Inte
 		HbaseAuditHandler auditHandler = _factory.getAuditHandler();
 		AuthorizationSession session = new AuthorizationSession(hbasePlugin)
 				.operation(operation)
-				.otherInformation(commandStr)
 				.remoteAddress(getRemoteAddress())
 				.auditHandler(auditHandler)
 				.user(user)
@@ -528,7 +525,7 @@ public class RangerAuthorizationCoprocessor implements AccessControlService.Inte
 		return result;
 	}
 
-	Filter authorizeAccess(ObserverContext<?> ctx, String operation, Action action, final RegionCoprocessorEnvironment env, final Map<byte[], NavigableSet<byte[]>> familyMap, String commandStr) throws AccessDeniedException {
+	Filter authorizeAccess(ObserverContext<?> ctx, String operation, Action action, final RegionCoprocessorEnvironment env, final Map<byte[], NavigableSet<byte[]>> familyMap) throws AccessDeniedException {
 
 		if (LOG.isDebugEnabled()) {
 			LOG.debug("==> authorizeAccess");
@@ -538,7 +535,7 @@ public class RangerAuthorizationCoprocessor implements AccessControlService.Inte
 		try {
 			perf = RangerPerfTracer.getPerfTracer(PERF_HBASEAUTH_REQUEST_LOG, "RangerAuthorizationCoprocessor.authorizeAccess(request=Operation[" + operation + "]");
 
-			ColumnFamilyAccessResult accessResult = evaluateAccess(ctx, operation, action, env, familyMap, commandStr);
+			ColumnFamilyAccessResult accessResult = evaluateAccess(ctx, operation, action, env, familyMap);
 			RangerDefaultAuditHandler auditHandler = new RangerDefaultAuditHandler(hbasePlugin.getConfig());
 			if (accessResult._everythingIsAccessible) {
 				auditHandler.logAuthzAudits(accessResult._accessAllowedEvents);
@@ -581,7 +578,7 @@ public class RangerAuthorizationCoprocessor implements AccessControlService.Inte
 			if (RangerPerfTracer.isPerfTraceEnabled(PERF_HBASEAUTH_REQUEST_LOG)) {
 				perf = RangerPerfTracer.getPerfTracer(PERF_HBASEAUTH_REQUEST_LOG, "RangerAuthorizationCoprocessor.requirePermission(request=Operation[" + operation + "]");
 			}
-			ColumnFamilyAccessResult accessResult = evaluateAccess(ctx, operation, action, regionServerEnv, familyMap, null);
+			ColumnFamilyAccessResult accessResult = evaluateAccess(ctx, operation, action, regionServerEnv, familyMap);
 			RangerDefaultAuditHandler auditHandler = new RangerDefaultAuditHandler(hbasePlugin.getConfig());
 			if (accessResult._everythingIsAccessible) {
 				auditHandler.logAuthzAudits(accessResult._accessAllowedEvents);
@@ -991,16 +988,13 @@ public class RangerAuthorizationCoprocessor implements AccessControlService.Inte
 		if (LOG.isDebugEnabled()) {
 			LOG.debug("==> preScannerOpen");
 		}
-		String commandStr = null;
+
 		try {
 			RegionCoprocessorEnvironment e = c.getEnvironment();
 
 			Map<byte[], NavigableSet<byte[]>> familyMap = scan.getFamilyMap();
-			String operation    = "scannerOpen";
-			byte[] tableName    = getTableName(e);
-			String tableNameStr = tableName != null ?  new String(tableName):" ";
-			commandStr          = getCommandString(HbaseConstants.SCAN, tableNameStr, scan.toMap());
-			Filter filter       = authorizeAccess(c, operation, Action.READ, e, familyMap, commandStr);
+			String operation = "scannerOpen";
+			Filter filter = authorizeAccess(c, operation, Action.READ, e, familyMap);
 			if (filter == null) {
 				if (LOG.isDebugEnabled()) {
 					LOG.debug("preScannerOpen: Access allowed for all families/column.  No filter added");
@@ -1015,7 +1009,7 @@ public class RangerAuthorizationCoprocessor implements AccessControlService.Inte
 			}
 		} finally {
 			if (LOG.isDebugEnabled()) {
-				LOG.debug("<== preScannerOpen: commandStr: " + commandStr);
+				LOG.debug("<== preScannerOpen");
 			}
 		}
 	}
@@ -1134,16 +1128,12 @@ public class RangerAuthorizationCoprocessor implements AccessControlService.Inte
 		if (LOG.isDebugEnabled()) {
 			LOG.debug("==> preGetOp");
 		}
-		String commandStr = null;
 		try {
 			RegionCoprocessorEnvironment e = rEnv.getEnvironment();
 			Map<byte[], NavigableSet<byte[]>> familyMap = get.getFamilyMap();
 
-			String operation    = "get";
-			byte[] tableName    = getTableName(e);
-			String tableNameStr = tableName != null ?  new String(tableName):" ";
-			commandStr          = getCommandString(HbaseConstants.GET, tableNameStr, get.toMap());
-			Filter filter       = authorizeAccess(rEnv, operation, Action.READ, e, familyMap, commandStr);
+			String operation = "get";
+			Filter filter = authorizeAccess(rEnv, operation, Action.READ, e, familyMap);
 			if (filter == null) {
 				if (LOG.isDebugEnabled()) {
 					LOG.debug("preGetOp: all access allowed, no filter returned");
@@ -1158,7 +1148,7 @@ public class RangerAuthorizationCoprocessor implements AccessControlService.Inte
 			}
 		} finally {
 			if (LOG.isDebugEnabled()) {
-				LOG.debug("<== preGetOp: commandStr: " + commandStr );
+				LOG.debug("<== preGetOp");
 			}
 		}
 	}
@@ -1655,108 +1645,6 @@ public class RangerAuthorizationCoprocessor implements AccessControlService.Inte
 
 		return ret;
 	}
-	private String getCommandString(String operationName, String tableNameStr, Map<String,Object> opMetaData) {
-		StringBuilder ret = new StringBuilder();
-		if (!HbaseConstants.HBASE_META_TABLE.equals(tableNameStr)) {
-			ret.append(operationName);
-			ret.append(HbaseConstants.SPACE);
-			ret.append(tableNameStr).append(HbaseConstants.COMMA).append(HbaseConstants.SPACE);
-			ret.append(getPredicates(operationName, opMetaData));
-		}
-		return ret.toString();
-	}
-
-	private String getPredicates(String operationName, Map<String,Object> opMetaData) {
-		StringBuilder ret = new StringBuilder();
-
-		if (MapUtils.isNotEmpty(opMetaData)) {
-			HashMap<String, ArrayList<?>> families    = (HashMap<String, ArrayList<?>>) opMetaData.get(HbaseConstants.FAMILIES);
-			String 						  startRowVal = (String) opMetaData.get(HbaseConstants.STARTROW);
-			String                        stopRowVal  = (String) opMetaData.get(HbaseConstants.STOPROW);
-			String                        filterVal   = (String) opMetaData.get(HbaseConstants.FILTER);
-			String                        rowVal      = (String) opMetaData.get(HbaseConstants.ROW);
-
-			if (!isQueryforInfo(families)) {
-				ret.append(HbaseConstants.OPEN_BRACES);
-				if (HbaseConstants.SCAN.equals(operationName)) {
-					if (StringUtils.isNotEmpty(startRowVal)) {
-						ret.append(formatPredicate(ret, PredicateType.STARTROW, startRowVal));
-					}
-					if (StringUtils.isNotEmpty(stopRowVal)) {
-						ret.append(formatPredicate(ret, PredicateType.STOPROW, stopRowVal));
-					}
-				} else {
-					if(StringUtils.isNotEmpty(rowVal)) {
-						ret.append(formatPredicate(ret, PredicateType.ROW, rowVal));
-					}
-				}
-				if (StringUtils.isNotEmpty(filterVal)) {
-					ret.append(formatPredicate(ret, PredicateType.FILTER, filterVal));
-				}
-				if (MapUtils.isNotEmpty(families)) {
-					String colfamily = families.toString();
-					ret.append(formatPredicate(ret, PredicateType.COLUMNS, colfamily));
-				}
-				ret.append(HbaseConstants.SPACE).append(HbaseConstants.CLOSED_BRACES);
-			}
-		}
-		return ret.toString();
-	}
-
-	private boolean isQueryforInfo(HashMap<String, ArrayList<?>> families) {
-		boolean ret = false;
-		for(HashMap.Entry family : families.entrySet()) {
-			String familyKey = (String) family.getKey();
-			if (HbaseConstants.INFO.equals(familyKey)) {
-				ret = true;
-				break;
-			}
-		}
-		return ret;
-	}
-
-	private String formatPredicate(StringBuilder commandStr, PredicateType predicateType, String val) {
-		StringBuilder ret = new StringBuilder();
-		if (HbaseConstants.OPEN_BRACES.equals(commandStr.toString())) {
-			ret.append(HbaseConstants.SPACE);
-		} else {
-			ret.append(HbaseConstants.COMMA).append(HbaseConstants.SPACE);
-		}
-		ret.append(buildPredicate(predicateType, val));
-		return ret.toString();
-	}
-
-	private String buildPredicate(PredicateType predicateType, String val) {
-		StringBuilder ret = new StringBuilder();
-		switch (predicateType) {
-			case STARTROW:
-				ret.append(PredicateType.STARTROW.name().toUpperCase());
-				ret.append(HbaseConstants.ARROW);
-				ret.append(HbaseConstants.SINGLE_QUOTES).append(val).append(HbaseConstants.SINGLE_QUOTES);
-				break;
-			case STOPROW:
-				ret.append(PredicateType.STOPROW.name().toUpperCase());
-				ret.append(HbaseConstants.ARROW);
-				ret.append(HbaseConstants.SINGLE_QUOTES).append(val).append(HbaseConstants.SINGLE_QUOTES);
-				break;
-			case FILTER:
-				ret.append(PredicateType.FILTER.name().toUpperCase());
-				ret.append(HbaseConstants.ARROW);
-				ret.append(HbaseConstants.SINGLE_QUOTES).append(val).append(HbaseConstants.SINGLE_QUOTES);
-				break;
-			case COLUMNS:
-				ret.append(PredicateType.COLUMNS.name().toUpperCase());
-				ret.append(HbaseConstants.ARROW);
-				ret.append(HbaseConstants.SINGLE_QUOTES).append(val).append(HbaseConstants.SINGLE_QUOTES);
-				break;
-			case ROW:
-				ret.append(val);
-				break;
-		}
-		return ret.toString();
-	}
-
-	enum PredicateType {STARTROW, STOPROW, FILTER, COLUMNS, ROW};
 }
 
 
