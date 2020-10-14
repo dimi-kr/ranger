@@ -19,7 +19,6 @@
   <id>admin</id> 
   <formats>
      <format>tar.gz</format>
-     <format>zip</format>
   </formats>
   <baseDirectory>${project.parent.name}-${project.version}-admin</baseDirectory>
   <includeBaseDirectory>true</includeBaseDirectory>
@@ -79,6 +78,7 @@
           <include>org.apache.hive:hive-exec:jar:${hive.version}</include>
           <include>org.apache.hive:hive-jdbc:jar:${hive.version}</include>
           <include>org.apache.hive:hive-metastore:jar:${hive.version}</include>
+          <include>org.apache.thrift:libfb303:jar:${libfb303.version}</include>
           <include>org.apache.thrift:libthrift:jar:${libthrift.version}</include>
         </includes>
       </binaries>
@@ -190,8 +190,6 @@
           <include>io.opentracing:opentracing-util:jar:0.31.0</include>
           <include>io.opentracing.contrib:opentracing-tracerresolver:jar:0.1.5</include>
           <include>com.google.protobuf:protobuf-java</include>
-          <include>org.apache.ratis:ratis-common:jar:0.2.0</include>
-          <include>org.apache.ratis:ratis-thirdparty-misc:jar:0.2.0</include>
         </includes>
       </binaries>
     </moduleSet>
@@ -270,6 +268,7 @@
           <include>com.carrotsearch:hppc</include>
           <include>joda-time:joda-time</include>
           <include>org.apache.ranger:ranger-plugins-cred</include>
+          <include>org.apache.ranger:ugsyn-util</include>
         </includes>
       </binaries>
     </moduleSet>

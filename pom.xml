@@ -23,7 +23,7 @@
     </parent>
     <groupId>org.apache.ranger</groupId>
     <artifactId>ranger</artifactId>
-    <version>2.1.0-SNAPSHOT</version>
+    <version>3.0.0-SNAPSHOT</version>
     <description>Security for Enforcing Enterprise Policies</description>
     <packaging>pom</packaging>
     <name>ranger</name>
@@ -45,9 +45,6 @@
         <system>JIRA</system>
         <url>https://issues.apache.org/jira/browse/ranger</url>
     </issueManagement>
-    <prerequisites>
-        <maven>3.0.1</maven>
-    </prerequisites>
     <mailingLists>
         <mailingList>
             <name>Dev Mailing List</name>
@@ -69,7 +66,7 @@
         </mailingList>
     </mailingLists>
     <properties>
-        <maven.version.required>3.6.2</maven.version.required>
+        <maven.version.required>3.6.3</maven.version.required>
         <java.version.required>1.8</java.version.required>
         <javac.source.version>1.8</javac.source.version>
         <javac.target.version>1.8</javac.target.version>
@@ -85,8 +82,8 @@
         <assembly.plugin.version>2.6</assembly.plugin.version>
         <atlas.version>3.0.0-SNAPSHOT</atlas.version>
         <atlas.gson.version>2.5</atlas.gson.version>
-        <atlas.jackson.version>2.9.9</atlas.jackson.version>
-        <atlas.jackson.databind.version>2.9.10.4</atlas.jackson.databind.version>
+        <atlas.jackson.version>2.10.3</atlas.jackson.version>
+        <atlas.jackson.databind.version>2.10.3</atlas.jackson.databind.version>
         <atlas.jettison.version>1.3.7</atlas.jettison.version>
         <atlas.commons.logging.version>1.1.3</atlas.commons.logging.version>
         <bouncycastle.version>1.55</bouncycastle.version>
@@ -128,6 +125,7 @@
         <hbase-shaded-protobuf>2.0.0</hbase-shaded-protobuf>
         <hbase-shaded-netty>2.0.0</hbase-shaded-netty>
         <hbase-shaded-miscellaneous>2.0.0</hbase-shaded-miscellaneous>
+        <libfb303.version>0.9.3</libfb303.version>
         <libthrift.version>0.13.0</libthrift.version>
         <htrace-core.version>4.1.0-incubating</htrace-core.version>
         <httpcomponents.httpclient.version>4.5.6</httpcomponents.httpclient.version>
@@ -160,6 +158,8 @@
         <libpam4j.version>1.10</libpam4j.version>
         <local.lib.dir>${project.basedir}/../lib/local</local.lib.dir>
         <log4j.version>1.2.17</log4j.version>
+        <maven.exec.plugin.version>1.6.0</maven.exec.plugin.version>
+        <maven.pmd.plugin.version>3.7</maven.pmd.plugin.version>
         <metrics.core.version>3.0.2</metrics.core.version>
         <mockito.version>3.0.0</mockito.version>
         <mockito.all.version>1.10.19</mockito.all.version>
@@ -170,7 +170,7 @@
         <owasp-java-html-sanitizer.version>r239</owasp-java-html-sanitizer.version>
         <paranamer.version>2.3</paranamer.version>
         <presto.version>333</presto.version>
-        <poi.version>3.17</poi.version>
+        <poi.version>4.1.2</poi.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <protobuf-java.version>2.5.0</protobuf-java.version>
         <scala.version>2.11.12</scala.version>
@@ -181,20 +181,20 @@
         <slf4j-api.version>1.7.25</slf4j-api.version>
         <solr.version>7.7.1</solr.version>
         <spring-ldap-core.version>2.3.3.RELEASE</spring-ldap-core.version>
-        <springframework.security.version>4.2.17.RELEASE</springframework.security.version>
-        <springframework.test.version>4.3.27.RELEASE</springframework.test.version>
-        <springframework.version>4.3.27.RELEASE</springframework.version>
+        <springframework.security.version>4.2.18.RELEASE</springframework.security.version>
+        <springframework.test.version>4.3.29.RELEASE</springframework.test.version>
+        <springframework.version>4.3.29.RELEASE</springframework.version>
         <sqoop.version>1.99.7</sqoop.version>
         <storm.version>1.2.0</storm.version>
         <sun-jersey-bundle.version>1.19</sun-jersey-bundle.version>
-        <tomcat.embed.version>7.0.104</tomcat.embed.version>
+        <tomcat.embed.version>7.0.105</tomcat.embed.version>
         <testng.version>6.9.4</testng.version>
         <velocity.version>1.7</velocity.version>
         <zookeeper.version>3.4.14</zookeeper.version>
         <codehaus.woodstox.stax2api.version>3.1.4</codehaus.woodstox.stax2api.version>
         <fasterxml.woodstox.version>5.0.3</fasterxml.woodstox.version>
-        <fasterxml.jackson.version>2.9.9</fasterxml.jackson.version>
-        <fasterxml.jackson.databind.version>2.9.10.4</fasterxml.jackson.databind.version>
+        <fasterxml.jackson.version>2.10.3</fasterxml.jackson.version>
+        <fasterxml.jackson.databind.version>2.10.3</fasterxml.jackson.databind.version>
         <kstruct.gethostname4j.version>0.0.2</kstruct.gethostname4j.version>
         <jna.version>5.2.0</jna.version>
         <jna-platform.version>5.2.0</jna-platform.version>
@@ -219,7 +219,7 @@
         <org.bouncycastle.bcpkix-jdk15on>1.59</org.bouncycastle.bcpkix-jdk15on>
         <lucene.version>8.4.0</lucene.version>
         <hppc.version>0.8.0</hppc.version>
-        <joda.time.version>2.10.5</joda.time.version>
+        <joda.time.version>2.10.6</joda.time.version>
         <log4j.core.version>2.11.1</log4j.core.version>
     </properties>
     <profiles>
@@ -252,6 +252,7 @@
                 <module>plugin-nifi-registry</module>
                 <module>plugin-presto</module>
                 <module>plugin-kudu</module>
+                <module>ugsync-util</module>
                 <module>ugsync</module>
                 <module>ugsync/ldapconfigchecktool/ldapconfigcheck</module>
                 <module>unixauthclient</module>
@@ -293,6 +294,7 @@
             <id>ranger-examples</id>
             <modules>
                 <module>agents-common</module>
+                <module>agents-cred</module>
                 <module>intg</module>
                 <module>ranger-examples</module>
             </modules>
@@ -302,6 +304,7 @@
             <modules>
                 <module>agents-common</module>
                 <module>security-admin</module>
+                <module>ugsync-util</module>
             </modules>
         </profile>
         <profile>
@@ -544,6 +547,7 @@
                 <module>plugin-nifi</module>
                 <module>plugin-nifi-registry</module>
                 <module>plugin-kudu</module>
+                <module>ugsync-util</module>
                 <module>ugsync</module>
                 <module>ugsync/ldapconfigchecktool/ldapconfigcheck</module>
                 <module>unixauthclient</module>
@@ -628,6 +632,7 @@
                 <module>plugin-nifi</module>
                 <module>plugin-nifi-registry</module>
                 <module>plugin-presto</module>
+                <module>ugsync-util</module>
                 <module>ugsync</module>
                 <module>ugsync/ldapconfigchecktool/ldapconfigcheck</module>
                 <module>unixauthclient</module>
@@ -672,6 +677,26 @@
                                 <goals>
                                     <goal>sign</goal>
                                 </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                        <version>1.4.1</version>
+                        <executions>
+                            <execution>
+                                <id>enforce-maven</id>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                                <configuration>
+                                    <rules>
+                                        <requireMavenVersion>
+                                            <version>${maven.version.required}</version>
+                                        </requireMavenVersion>
+                                    </rules>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
@@ -929,7 +954,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-pmd-plugin</artifactId>
-                <version>3.7</version>
+                <version>${maven.pmd.plugin.version}</version>
                 <executions>
                     <execution>
                         <phase>verify</phase>
@@ -1011,6 +1036,7 @@
                         <exclude>**/package.json</exclude>
                         <exclude>**/package-lock.json</exclude>
                         <exclude>**/ranger_es_schema.json</exclude>
+                        <exclude>**/venv/**</exclude>
                     </excludes>
                 </configuration>
             </plugin>
