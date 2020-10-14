@@ -1,0 +1,193 @@
+diff --git a/plugin-presto/src/main/java/org/apache/ranger/authorization/presto/authorizer/RangerSystemAccessControl.java b/plugin-presto/src/main/java/org/apache/ranger/authorization/presto/authorizer/RangerSystemAccessControl.java
+index f4fc89dc1..30c91ab45 100644
+--- a/plugin-presto/src/main/java/org/apache/ranger/authorization/presto/authorizer/RangerSystemAccessControl.java
++++ b/plugin-presto/src/main/java/org/apache/ranger/authorization/presto/authorizer/RangerSystemAccessControl.java
+@@ -229,7 +229,7 @@ private boolean isRowFilterEnabled(RangerAccessResult result) {
+     LOG.debug("==> RangerSystemAccessControl.filterCatalogs("+ catalogs + ")");
+     Set<String> filteredCatalogs = new HashSet<>(catalogs.size());
+     for (String catalog: catalogs) {
+-      if (hasPermission(createResource(catalog), context, PrestoAccessType.SELECT)) {
++      if (hasPermission(createResource(catalog), context, PrestoAccessType.SHOW)) {
+         filteredCatalogs.add(catalog);
+       }
+     }
+@@ -241,7 +241,7 @@ private boolean isRowFilterEnabled(RangerAccessResult result) {
+     LOG.debug("==> RangerSystemAccessControl.filterSchemas(" + catalogName + ")");
+     Set<String> filteredSchemaNames = new HashSet<>(schemaNames.size());
+     for (String schemaName: schemaNames) {
+-      if (hasPermission(createResource(catalogName, schemaName), context, PrestoAccessType.SELECT)) {
++      if (hasPermission(createResource(catalogName, schemaName), context, PrestoAccessType.SHOW)) {
+         filteredSchemaNames.add(schemaName);
+       }
+     }
+@@ -254,7 +254,7 @@ private boolean isRowFilterEnabled(RangerAccessResult result) {
+     Set<SchemaTableName> filteredTableNames = new HashSet<>(tableNames.size());
+     for (SchemaTableName tableName : tableNames) {
+       RangerPrestoResource res = createResource(catalogName, tableName.getSchemaName(), tableName.getTableName());
+-      if (hasPermission(res, context, PrestoAccessType.SELECT)) {
++      if (hasPermission(res, context, PrestoAccessType.SHOW)) {
+         filteredTableNames.add(tableName);
+       }
+     }
+@@ -281,6 +281,14 @@ public void checkCanImpersonateUser(SystemSecurityContext context, String userNa
+     }
+   }
+ 
++  @Override
++  public void checkCanReadSystemInformation(SystemSecurityContext context) {
++    // pass as it is deprecated
++  }
++  @Override
++  public void checkCanWriteSystemInformation(SystemSecurityContext context) {
++    // pass as it is deprecated
++  }
+   @Override
+   public void checkCanSetUser(Optional<Principal> principal, String userName) {
+     // pass as it is deprecated
+@@ -306,18 +314,18 @@ public void checkCanShowRoles(SystemSecurityContext context, String catalogName)
+ 
+   @Override
+   public void checkCanAccessCatalog(SystemSecurityContext context, String catalogName) {
+-    if (!hasPermission(createResource(catalogName), context, PrestoAccessType.USE)) {
+-      LOG.debug("RangerSystemAccessControl.checkCanAccessCatalog(" + catalogName + ") denied");
+-      AccessDeniedException.denyCatalogAccess(catalogName);
+-    }
++    //if (!hasPermission(createResource(catalogName), context, PrestoAccessType.USE)) {
++    //  LOG.debug("RangerSystemAccessControl.checkCanAccessCatalog(" + catalogName + ") denied");
++    //  AccessDeniedException.denyCatalogAccess(catalogName);
++    //}
+   }
+ 
+   @Override
+   public void checkCanShowSchemas(SystemSecurityContext context, String catalogName) {
+-    if (!hasPermission(createResource(catalogName), context, PrestoAccessType.SHOW)) {
+-      LOG.debug("RangerSystemAccessControl.checkCanShowSchemas(" + catalogName + ") denied");
+-      AccessDeniedException.denyShowSchemas(catalogName);
+-    }
++    //if (!hasPermission(createResource(catalogName), context, PrestoAccessType.SHOW)) {
++    //  LOG.debug("RangerSystemAccessControl.checkCanShowSchemas(" + catalogName + ") denied");
++    //  AccessDeniedException.denyShowSchemas(catalogName);
++    //}
+   }
+ 
+   /** SCHEMA **/
+@@ -624,10 +632,10 @@ public void checkCanGrantExecuteFunctionPrivilege(SystemSecurityContext context,
+ 
+   @Override
+   public void checkCanExecuteFunction(SystemSecurityContext context, String function) {
+-    if (!hasPermission(createFunctionResource(function), context, PrestoAccessType.EXECUTE)) {
+-      LOG.debug("RangerSystemAccessControl.checkCanExecuteFunction(" + function + ") denied");
+-      AccessDeniedException.denyExecuteFunction(function);
+-    }
++    //if (!hasPermission(createFunctionResource(function), context, PrestoAccessType.EXECUTE)) {
++    // LOG.debug("RangerSystemAccessControl.checkCanExecuteFunction(" + function + ") denied");
++    //  AccessDeniedException.denyExecuteFunction(function);
++    //}
+   }
+ 
+   /** PROCEDURES **/
+@@ -640,29 +648,28 @@ public void checkCanExecuteProcedure(SystemSecurityContext context, CatalogSchem
+   }
+ 
+   /** HELPER FUNCTIONS **/
+-
+   private RangerPrestoAccessRequest createAccessRequest(RangerPrestoResource resource, SystemSecurityContext context, PrestoAccessType accessType) {
+     Set<String> userGroups = null;
+-
++    LOG.debug("*** RESSOURCE ACCESS: " + resource.getCatalogName() + " " + resource.getSchema() + " " + resource.getTable());
++    LOG.debug("*** CONTEXT" + context.getIdentity() + " " + context.getQueryId() + " Full object:" + context.toString());
+     if (useUgi) {
+       UserGroupInformation ugi = UserGroupInformation.createRemoteUser(context.getIdentity().getUser());
+-
++      LOG.debug("*** Groups of User: " + ugi.getGroupNames());
+       String[] groups = ugi != null ? ugi.getGroupNames() : null;
+-
+       if (groups != null && groups.length > 0) {
+         userGroups = new HashSet<>(Arrays.asList(groups));
+       }
+     } else {
+       userGroups = context.getIdentity().getGroups();
+     }
+-
++    LOG.debug("*** final groups of User: " + userGroups);
+     RangerPrestoAccessRequest request = new RangerPrestoAccessRequest(
+       resource,
+       context.getIdentity().getUser(),
+       userGroups,
+       accessType
+     );
+-
++    LOG.debug("*** RangerPrestoAccessRequest Object: " + request.toString());
+     return request;
+   }
+ 
+@@ -670,8 +677,10 @@ private boolean hasPermission(RangerPrestoResource resource, SystemSecurityConte
+     boolean ret = false;
+ 
+     RangerPrestoAccessRequest request = createAccessRequest(resource, context, accessType);
++    LOG.debug("*** RangerPrestoAccessRequest Object (hasPermission): " + request.toString());
+ 
+     RangerAccessResult result = rangerPlugin.isAccessAllowed(request);
++    LOG.debug("*** RangerAccessResult Object (hasPermission): " + result.toString());
+     if (result != null && result.getIsAllowed()) {
+       ret = true;
+     }
+@@ -840,4 +849,4 @@ public RangerPrestoAccessRequest(RangerPrestoResource resource,
+ 
+ enum PrestoAccessType {
+   CREATE, DROP, SELECT, INSERT, DELETE, USE, ALTER, ALL, GRANT, REVOKE, SHOW, IMPERSONATE, EXECUTE;
+-}
+\ No newline at end of file
++}
+diff --git a/pom.xml b/pom.xml
+index d9888e0d1..229b70226 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -170,7 +170,7 @@
+         <noggit.version>0.8</noggit.version>
+         <owasp-java-html-sanitizer.version>r239</owasp-java-html-sanitizer.version>
+         <paranamer.version>2.3</paranamer.version>
+-        <presto.version>333</presto.version>
++        <presto.version>337</presto.version>
+         <poi.version>3.17</poi.version>
+         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+         <protobuf-java.version>2.5.0</protobuf-java.version>
+@@ -238,7 +238,6 @@
+                 <module>agents-installer</module>
+                 <module>credentialbuilder</module>
+                 <module>embeddedwebserver</module>
+-                <module>kms</module>
+                 <module>hbase-agent</module>
+                 <module>hdfs-agent</module>
+                 <module>hive-agent</module>
+diff --git a/ranger-presto-plugin-shim/src/main/java/org/apache/ranger/authorization/presto/authorizer/RangerSystemAccessControl.java b/ranger-presto-plugin-shim/src/main/java/org/apache/ranger/authorization/presto/authorizer/RangerSystemAccessControl.java
+index 40638701f..7443ae9ee 100644
+--- a/ranger-presto-plugin-shim/src/main/java/org/apache/ranger/authorization/presto/authorizer/RangerSystemAccessControl.java
++++ b/ranger-presto-plugin-shim/src/main/java/org/apache/ranger/authorization/presto/authorizer/RangerSystemAccessControl.java
+@@ -466,6 +466,26 @@ public void checkCanShowRoles(SystemSecurityContext context, String catalogName)
+     return viewExpression;
+   }
+ 
++  @Override
++  public void checkCanReadSystemInformation(SystemSecurityContext context) {
++    try {
++      activatePluginClassLoader();
++      systemAccessControlImpl.checkCanReadSystemInformation(context);
++    } finally {
++      deactivatePluginClassLoader();
++    }
++  }
++  
++  @Override
++  public void checkCanWriteSystemInformation(SystemSecurityContext context) {
++    try {
++      activatePluginClassLoader();
++      systemAccessControlImpl.checkCanWriteSystemInformation(context);
++    } finally {
++      deactivatePluginClassLoader();
++    }
++  }
++  
+   @Override
+   public void checkCanSetUser(Optional<Principal> principal, String userName) {
+     try {
