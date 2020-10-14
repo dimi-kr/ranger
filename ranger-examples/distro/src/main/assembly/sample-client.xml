@@ -29,6 +29,7 @@
                 <include>org.apache.ranger:sample-client</include>
                 <include>org.apache.ranger:ranger-intg</include>
                 <include>org.apache.ranger:ranger-plugins-common</include>
+                <include>org.apache.ranger:ranger-plugins-cred</include>
             </includes>
             <binaries>
                 <outputDirectory>lib</outputDirectory>
@@ -60,6 +61,7 @@
                     <include>org.codehaus.jackson:jackson-mapper-asl</include>
                     <include>org.codehaus.jackson:jackson-xc</include>
                     <include>org.apache.ranger:ranger-plugins-audit</include>
+                    <include>org.apache.htrace:htrace-core4</include>
                     <include>com.kstruct:gethostname4j:jar:${kstruct.gethostname4j.version}</include>
                     <include>net.java.dev.jna:jna:jar:${jna.version}</include>
                     <include>net.java.dev.jna:jna-platform:jar:${jna-platform.version}</include>
@@ -76,6 +78,15 @@
             <directory>${project.parent.basedir}/sample-client/scripts</directory>
             <includes>
                 <include>*.sh</include>
+                <include>*.py</include>
+            </includes>
+            <fileMode>755</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory></outputDirectory>
+            <directory>${project.parent.basedir}/sample-client/conf</directory>
+            <includes>
+                <include>*.properties</include>
             </includes>
             <fileMode>755</fileMode>
         </fileSet>
@@ -87,6 +98,25 @@
             <includes>
                 <include>*.properties</include>
             </includes>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>venv/pylib</outputDirectory>
+            <directory>../../intg/src/main/python</directory>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>venv/resources</outputDirectory>
+            <directory>../../intg/src/main/resources</directory>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>venv/pylib</outputDirectory>
+            <directory>../sample-client/src/main/python</directory>
+            <includes>
+                <include>sample_client.py</include>
+            </includes>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>venv</outputDirectory>
+            <directory>../sample-client/venv</directory>
         </fileSet>
     </fileSets>
 </assembly>

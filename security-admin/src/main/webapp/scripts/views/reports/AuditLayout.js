@@ -138,11 +138,15 @@ define(function(require) {
                 App.vsHistory = {'bigData':[], 'admin':[], 'loginSession':[], 'agent':[],'pluginStatus':[], 'userSync': []};
             }
             //Add url params to vsHistory
-            if(!_.isUndefined(this.tab.split('?')[1])) {
+           	this.urlQueryParams = XAUtils.urlQueryParams();
+            if(!_.isUndefined(this.urlQueryParams)) {
                 App.vsHistory[that.tab.split('?')[0]] = [];
-                var searchFregment = XAUtils.changeUrlToSearchQuery(decodeURIComponent(this.tab.substring(this.tab.indexOf("?") + 1)));
+                var searchFregment = XAUtils.changeUrlToSearchQuery(decodeURIComponent(this.urlQueryParams));
+                if (this.urlQueryParams && _.has(searchFregment, 'excludeServiceUser')) {
+                    App.excludeServiceUser = searchFregment.excludeServiceUser == "true";
+                }
                 _.map (searchFregment, function(val, key) {
-                    if (key !== "sortBy" && key !== "sortType" && key !== "sortKey") {
+                    if (key !== "sortBy" && key !== "sortType" && key !== "sortKey" && key !== "excludeServiceUser") {
                         if (_.isArray(val)) {
                             _.map(val, function (v) {
                                 App.vsHistory[that.tab.split('?')[0]].push(new Backbone.Model( {'category': key, 'value' : v}));
@@ -180,7 +184,7 @@ define(function(require) {
 				data :{'pageSource':'Audit'}
 			});
             this.serviceList = new RangerServiceList();
-            this.serviceList.setPageSize(100)
+            this.serviceList.setPageSize(200)
             this.serviceList.fetch({
                 cache : false,
                 async:false,
@@ -189,10 +193,11 @@ define(function(require) {
 		},
 		/** on render callback */
 		onRender : function() {
+			this.ui.tab.find('[href="'+this.currentTab+'"]').addClass('active');
 			if(this.currentTab != '#bigData'){
 				this.onTabChange();
-				this.ui.tab.find('li[class="active"]').removeClass();
-				this.ui.tab.find('[href="'+this.currentTab+'"]').parent().addClass('active');
+			// 	this.ui.tab.find('li[class="active"]').removeClass();
+			// 	this.ui.tab.find('[href="'+this.currentTab+'"]').parent().addClass('active');
 			} else {
                 var sortObj = {};
                 if(Backbone.history.fragment.indexOf("?") !== -1) {
@@ -238,8 +243,8 @@ define(function(require) {
 					<th class="renderable ruser"></th>\
                                         <th class="renderable ruser"></th>\
 					<th class="renderable ruser"></th>\
-					<th class="renderable cip" colspan="3">Policy ( Time )<i class="icon-info-sign m-l-sm" data-id ="policyTimeDetails"></th>\
-                    <th class="renderable cip" colspan="3">Tag ( Time )<i class="icon-info-sign m-l-sm" data-id ="tagPolicyTimeDetails"></th>\
+					<th class="renderable cip" colspan="3">Policy ( Time )<i class="fa-fw fa fa-info-circle m-l-sm" data-id ="policyTimeDetails"></th>\
+                    <th class="renderable cip" colspan="3">Tag ( Time )<i class="fa-fw fa fa-info-circle m-l-sm" data-id ="tagPolicyTimeDetails"></th>\
 			 	</tr>');
 		},
         modifyUserSyncTableSubcolumns : function(){
@@ -429,7 +434,7 @@ define(function(require) {
                                    //{text : localization.tt("lbl.permission"), label :'action', urlLabel : 'permission'}
                                 ];
             var searchOpt = ['Resource Type','Start Date','End Date','Application','User','Service Name','Service Type','Resource Name','Access Type','Result','Access Enforcer',
-            'Client IP','Tags','Cluster Name', 'Zone Name', 'Exclude User', localization.tt("lbl.agentHost")];//, localization.tt("lbl.permission")];//,'Policy ID'
+            'Client IP','Tags','Cluster Name', 'Zone Name', 'Exclude User', localization.tt("lbl.agentHost"), 'Policy ID'];//, localization.tt("lbl.permission")];
                         this.clearVisualSearch(this.accessAuditList, serverAttrName);
                         this.searchInfoArr =[{text :'Access Enforcer', info :localization.tt('msg.accessEnforcer')},
                                             {text :'Access Type' 	, info :localization.tt('msg.accessTypeMsg')},
@@ -543,10 +548,8 @@ define(function(require) {
 					}
                 }
 			};
-            if(App.excludeServiceUser){
-                this.accessAuditList.queryParams.excludeServiceUser = true;
-                this.ui.serviceUsersExclude.prop('checked', true);
-            }
+            this.accessAuditList.queryParams.excludeServiceUser = App.excludeServiceUser || false;
+            this.ui.serviceUsersExclude.prop('checked', App.excludeServiceUser || false);
             this.visualSearch = XAUtils.addVisualSearch(searchOpt,serverAttrName, this.accessAuditList, pluginAttr);
             this.setEventsToFacets(this.visualSearch, App.vsHistory.bigData);
         },
@@ -880,7 +883,7 @@ define(function(require) {
 				},
 				onClick: function (e) {
 					var self = this;
-					if($(e.target).is('.icon-edit,.icon-trash,a,code'))
+					if($(e.target).is('.fa-fw fa fa-edit,.fa-fw fa fa-trash,a,code'))
 						return;
 					this.$el.parent('tbody').find('tr').removeClass('tr-active');
 					this.$el.toggleClass('tr-active');
@@ -945,9 +948,10 @@ define(function(require) {
 							title: localization.tt("h.operationDiff")+' : '+action,
 							okText :localization.tt("lbl.ok"),
 							allowCancel : true,
-							escape : true
+							escape : true,
+							focusOk : false
 						}).open();
-						modal.$el.addClass('modal-diff').attr('tabindex',-1);
+						//modal.$el.addClass('modal-diff').attr('tabindex',-1);
 						modal.$el.find('.cancel').hide();
 					});
 				}
@@ -995,7 +999,7 @@ define(function(require) {
 						</ol>\
 					</div>\
 					<div class="diff-right">\
-						<ol class="unstyled data">'+values+'\
+						<ol class="list-unstyled data">'+values+'\
 						</ol>\
 					</div>\
 				</div>\
@@ -1098,18 +1102,18 @@ define(function(require) {
 						fromRaw: function (rawValue) {
 							var html = '';
 							if(rawValue =='create'){
-								html = 	'<label class="label label-success capitalize">'+rawValue+'</label>';
+								html = 	'<label class="badge badge-success capitalize">'+rawValue+'</label>';
 							} else if(rawValue == 'update'){
-								html = 	'<label class="label label-yellow capitalize">'+rawValue+'</label>';
+								html = 	'<label class="badge badge-yellow capitalize">'+rawValue+'</label>';
 							}else if(rawValue == 'delete'){
-								html = 	'<label class="label label-important capitalize">'+rawValue+'</label>';
+								html = 	'<label class="badge badge-danger capitalize">'+rawValue+'</label>';
 							}else if(rawValue =='IMPORT START'){
-								html = 	'<label class="label label-info capitalize">'+rawValue+'</label>';
+								html = 	'<label class="badge badge-info capitalize">'+rawValue+'</label>';
 							}else if(rawValue =='IMPORT END'){
-								html = 	'<label class="label label-info capitalize">'+rawValue+'</label>';
+								html = 	'<label class="badge badge-info capitalize">'+rawValue+'</label>';
 							}							else {
 								rawValue = rawValue.toLowerCase() 
-								html = 	'<label class="label capitalize ">'+rawValue+'</label>';
+								html = 	'<label class="badge badge-secondary capitalize ">'+rawValue+'</label>';
 							}
 							return html;
 						}
@@ -1186,15 +1190,16 @@ define(function(require) {
                                                         title: localization.tt("h.policyDetails"),
                                                         okText :localization.tt("lbl.ok"),
                                     allowCancel : true,
-                                                        escape : true
+                                                        escape : true,
+                                                        focusOk : false
                                                 }).open();
                                 modal.$el.find('.cancel').hide();
                                                 var policyVerEl = modal.$el.find('.modal-footer').prepend('<div class="policyVer pull-left"></div>').find('.policyVer');
-                                                policyVerEl.append('<i id="preVer" class="icon-chevron-left '+ ((policy.get('version')>1) ? 'active' : '') +'"></i><text>Version '+ policy.get('version') +'</text>').find('#preVer').click(function(e){
+                                                policyVerEl.append('<i id="preVer" class="fa-fw fa fa-chevron-left '+ ((policy.get('version')>1) ? 'active' : '') +'"></i><text>Version '+ policy.get('version') +'</text>').find('#preVer').click(function(e){
                                                         view.previousVer(e);
                                                 });
                                                     var policyVerIndexAt = policyVersionList.indexOf(policy.get('version'));
-                                                policyVerEl.append('<i id="nextVer" class="icon-chevron-right '+ (!_.isUndefined(policyVersionList[++policyVerIndexAt])? 'active' : '')+'"></i>').find('#nextVer').click(function(e){
+                                                policyVerEl.append('<i id="nextVer" class="fa-fw fa fa-chevron-right '+ (!_.isUndefined(policyVersionList[++policyVerIndexAt])? 'active' : '')+'"></i>').find('#nextVer').click(function(e){
                                                         view.nextVer(e);
                                                 });
                     } else {
@@ -1213,8 +1218,6 @@ define(function(require) {
                             escape : true,
                         }).open();
                         modal.$el.find('.cancel').hide();
-                        modal.$el.addClass('modal-dialog-size');
-                        modal.$el.find('.modal-body').addClass('modal-body-size');
                     }
 				}
 			});
@@ -1353,7 +1356,7 @@ define(function(require) {
 								if(_.isUndefined(rawValue) || _.isEmpty(rawValue)){
 									return '<center>--</center>';
 								}else{
-									return '<span  class="label label-info" title="'+rawValue+'">'+rawValue+'</span>';
+									return '<span  class="badge badge-info" title="'+rawValue+'">'+rawValue+'</span>';
 								}
 							}
 						})
@@ -1372,9 +1375,9 @@ define(function(require) {
 									if(parseInt(rawValue) == m.value){
 										label=  m.label;
 										if(m.value == XAEnums.AccessResult.ACCESS_RESULT_ALLOWED.value){
-											html = 	'<label class="label label-success">'+label+'</label>';
+											html = 	'<label class="badge badge-success">'+label+'</label>';
 										} else {
-											html = 	'<label class="label label-important">'+label+'</label>';
+											html = 	'<label class="badge badge-danger">'+label+'</label>';
 										} 
 									}	
 								});
@@ -1442,7 +1445,7 @@ define(function(require) {
                                 if (_.isUndefined(rawValue) || _.isEmpty(rawValue)) {
                                     '--'
                                 } else {
-                                    return '<span class="label label-inverse" title="'+rawValue+'">'+rawValue+'</span>';
+                                    return '<span class="badge badge-dark" title="'+rawValue+'">'+rawValue+'</span>';
                                 }
                             }
                         }),
@@ -1543,9 +1546,9 @@ define(function(require) {
 								if(parseInt(rawValue) == m.value){
 									label=  m.label;
 									if(m.value == 1){
-										html = 	'<label class="label label-success">'+label+'</label>';
+										html = 	'<label class="badge badge-success">'+label+'</label>';
 									} else if(m.value == 2){
-										html = 	'<label class="label label-important">'+label+'</label>';
+										html = 	'<label class="badge badge-danger">'+label+'</label>';
 									} else {
 										html = 	'<label class="label">'+label+'</label>';
 									}
@@ -1837,10 +1840,10 @@ define(function(require) {
                                                                 var lastUpdateDate = new Date(parseInt(model.get('info')['lastPolicyUpdateTime']));
                                                                 if(that.isDateDifferenceMoreThanHr(downloadDate, lastUpdateDate)){
                                                                         if(moment(downloadDate).diff(moment(lastUpdateDate),'minutes') >= -2) {
-                                                                                return '<span class="text-warning"><i class="icon-exclamation-sign activePolicyAlert" title="'+localization.tt("msg.downloadTimeDelayMsg")+'"></i>'
+                                                                                return '<span class="text-warning"><i class="fa-fw fa fa-exclamation-circle activePolicyAlert" title="'+localization.tt("msg.downloadTimeDelayMsg")+'"></i>'
                                                                                 + that.setTimeStamp(downloadDate , moment) +'</span>';
                                                                         } else {
-                                                                                return '<span class="text-error"><i class="icon-exclamation-sign activePolicyAlert" title="'+localization.tt("msg.downloadTimeDelayMsg")+'"></i>'
+                                                                                return '<span class="text-error"><i class="fa-fw fa fa-exclamation-circle activePolicyAlert" title="'+localization.tt("msg.downloadTimeDelayMsg")+'"></i>'
                                                                                 + that.setTimeStamp(downloadDate , moment)+'</span>';
                                                                         }
 
@@ -1870,10 +1873,10 @@ define(function(require) {
 								var lastUpdateDate = new Date(parseInt(model.get('info')['lastPolicyUpdateTime']));
 								if(that.isDateDifferenceMoreThanHr(activeDate, lastUpdateDate)){
                                                                         if(moment(activeDate).diff(moment(lastUpdateDate),'minutes') >= -2) {
-                                                                                return '<span class="text-warning"><i class="icon-exclamation-sign activePolicyAlert" title="'+localization.tt("msg.activationTimeDelayMsg")+'"></i>'
+                                                                                return '<span class="text-warning"><i class="fa-fw fa fa-exclamation-circle activePolicyAlert" title="'+localization.tt("msg.activationTimeDelayMsg")+'"></i>'
                                                                                 + that.setTimeStamp(activeDate , moment) +'</span>';
                                                                         } else {
-                                                                                return '<span class="text-error"><i class="icon-exclamation-sign activePolicyAlert" title="'+localization.tt("msg.activationTimeDelayMsg")+'"></i>'
+                                                                                return '<span class="text-error"><i class="fa-fw fa fa-exclamation-circle activePolicyAlert" title="'+localization.tt("msg.activationTimeDelayMsg")+'"></i>'
                                                                                 + that.setTimeStamp(activeDate , moment)+'</span>';
                                                                         }
 
@@ -1924,10 +1927,10 @@ define(function(require) {
                                                                 var lastUpdateDate = new Date(parseInt(model.get('info')['lastTagUpdateTime']));
                                                                 if(that.isDateDifferenceMoreThanHr(downloadTagDate, lastUpdateDate)){
                                                                         if(moment(downloadTagDate).diff(moment(lastUpdateDate),'minutes') >= -2) {
-                                                                                return '<span class="text-warning"><i class="icon-exclamation-sign activePolicyAlert" title="'+localization.tt("msg.downloadTimeDelayMsg")+'"></i>'
+                                                                                return '<span class="text-warning"><i class="fa-fw fa fa-exclamation-circle activePolicyAlert" title="'+localization.tt("msg.downloadTimeDelayMsg")+'"></i>'
                                                                                 + that.setTimeStamp(downloadTagDate , moment) +'</span>';
                                                                         } else {
-                                                                                return '<span class="text-error"><i class="icon-exclamation-sign activePolicyAlert" title="'+localization.tt("msg.downloadTimeDelayMsg")+'"></i>'
+                                                                                return '<span class="text-error"><i class="fa-fw fa fa-exclamation-circle activePolicyAlert" title="'+localization.tt("msg.downloadTimeDelayMsg")+'"></i>'
                                                                                 + that.setTimeStamp(downloadTagDate , moment)+'</span>';
                                                                         }
 
@@ -1957,10 +1960,10 @@ define(function(require) {
 									var lastUpdateDate = new Date(parseInt(model.get('info')['lastTagUpdateTime']));
 									if(that.isDateDifferenceMoreThanHr(activeDate, lastUpdateDate)){
                                                                                 if(moment(activeDate).diff(moment(lastUpdateDate),'minutes') >= -2) {
-                                                                                        return '<span class="text-warning"><i class="icon-exclamation-sign activePolicyAlert" title="'+localization.tt("msg.activationTimeDelayMsg")+'"></i>'
+                                                                                        return '<span class="text-warning"><i class="fa-fw fa fa-exclamation-circle activePolicyAlert" title="'+localization.tt("msg.activationTimeDelayMsg")+'"></i>'
                                                                                         + that.setTimeStamp(activeDate , moment) +'</span>';
                                                                                 } else {
-                                                                                        return '<span class="text-error"><i class="icon-exclamation-sign activePolicyAlert" title="'+localization.tt("msg.activationTimeDelayMsg")+'"></i>'
+                                                                                        return '<span class="text-error"><i class="fa-fw fa fa-exclamation-circle activePolicyAlert" title="'+localization.tt("msg.activationTimeDelayMsg")+'"></i>'
                                                                                         + that.setTimeStamp(activeDate , moment)+'</span>';
                                                                                 }
 									}
@@ -2007,7 +2010,7 @@ define(function(require) {
                     formatter: _.extend({}, Backgrid.CellFormatter.prototype, {
                         fromRaw: function (rawValue, model) {
                             var label = rawValue == "Unix" ? 'success' : (rawValue == "File" ? 'info' : 'yellow');
-                            return '<center><label class="label label-'+label+'">'+_.escape(rawValue)+'</label></center>';
+                            return '<center><label class="badge badge-'+label+'">'+_.escape(rawValue)+'</label></center>';
                         }
                     }),
                 },
@@ -2056,7 +2059,7 @@ define(function(require) {
                     sortable:false,
                     formatter: _.extend({}, Backgrid.CellFormatter.prototype, {
                         fromRaw: function (rawValue, model) {
-                            return('<button data-id="syncDetailes" title="Sync Details" id="'+ model.get('id') +'" ><i class="icon-eye-open"> </i></button>');
+                            return('<button data-id="syncDetailes" title="Sync Details" id="'+ model.get('id') +'" ><i class="fa-fw fa fa-eye"> </i></button>');
                         }
                     }),
                 }
@@ -2088,9 +2091,10 @@ define(function(require) {
                     title : localization.tt("lbl.sessionDetail"),
                     okText : localization.tt("lbl.ok"),
                     allowCancel : true,
-                    escape : true
+                    escape : true,
+                    focusOk : false
                 }).open();
-                modal.$el.addClass('modal-diff').attr('tabindex', -1);
+                //modal.$el.addClass('modal-diff').attr('tabindex', -1);
                 modal.$el.find('.cancel').hide();
             });
         },
@@ -2248,6 +2252,9 @@ define(function(require) {
                 App.excludeServiceUser = e.currentTarget.checked;
                 this.accessAuditList.state.currentPage = this.accessAuditList.state.firstPage;
                 XAUtils.blockUI();
+                var urlParams = XAUtils.changeUrlToSearchQuery(decodeURIComponent(XAUtils.urlQueryParams()))
+                urlParams['excludeServiceUser'] = e.currentTarget.checked;
+                XAUtils.changeParamToUrlFragment(urlParams);
                 this.accessAuditList.fetch({
                     reset : true,
                     cache : false,
