@@ -648,29 +648,28 @@ public class RangerSystemAccessControl
   }
 
   /** HELPER FUNCTIONS **/
-
   private RangerPrestoAccessRequest createAccessRequest(RangerPrestoResource resource, SystemSecurityContext context, PrestoAccessType accessType) {
     Set<String> userGroups = null;
-
+    LOG.debug("*** RESSOURCE ACCESS: " + resource.getCatalogName() + " " + resource.getSchema() + " " + resource.getTable());
+    LOG.debug("*** CONTEXT" + context.getIdentity() + " " + context.getQueryId() + " Full object:" + context.toString());
     if (useUgi) {
       UserGroupInformation ugi = UserGroupInformation.createRemoteUser(context.getIdentity().getUser());
-
+      LOG.debug("*** Groups of User: " + ugi.getGroupNames());
       String[] groups = ugi != null ? ugi.getGroupNames() : null;
-
       if (groups != null && groups.length > 0) {
         userGroups = new HashSet<>(Arrays.asList(groups));
       }
     } else {
       userGroups = context.getIdentity().getGroups();
     }
-
+    LOG.debug("*** final groups of User: " + userGroups);
     RangerPrestoAccessRequest request = new RangerPrestoAccessRequest(
       resource,
       context.getIdentity().getUser(),
       userGroups,
       accessType
     );
-
+    LOG.debug("*** RangerPrestoAccessRequest Object: " + request.toString());
     return request;
   }
 
@@ -678,8 +677,10 @@ public class RangerSystemAccessControl
     boolean ret = false;
 
     RangerPrestoAccessRequest request = createAccessRequest(resource, context, accessType);
+    LOG.debug("*** RangerPrestoAccessRequest Object (hasPermission): " + request.toString());
 
     RangerAccessResult result = rangerPlugin.isAccessAllowed(request);
+    LOG.debug("*** RangerAccessResult Object (hasPermission): " + result.toString());
     if (result != null && result.getIsAllowed()) {
       ret = true;
     }
