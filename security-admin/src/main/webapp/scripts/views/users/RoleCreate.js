@@ -106,6 +106,7 @@ define(function(require){
                 return;
             }
             XAUtil.blockUI();
+            this.form.beforeSave()
             if(!this.form.beforeSave()){
                 XAUtil.blockUI('unblock');
                 return

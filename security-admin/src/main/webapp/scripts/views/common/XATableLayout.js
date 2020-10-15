@@ -166,7 +166,6 @@ define(function(require){
 			}));
 		},
 		showHidePager : function(){
-			$('.popover').remove();
 			if(this.collection.state && this.collection.state.totalRecords > XAGlobals.settings.PAGE_SIZE)	{
 				this.$el.find(this.rPagination.el).show()
 			} else {

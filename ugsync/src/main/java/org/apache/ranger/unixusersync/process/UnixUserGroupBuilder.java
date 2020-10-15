@@ -26,21 +26,13 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Map;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.HashMap;
-import java.util.Date;
-import java.util.Arrays;
-import java.util.Iterator;
+import java.util.*;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.Table;
 import org.apache.log4j.Logger;
-import org.apache.ranger.ugsyncutil.model.UgsyncAuditInfo;
-import org.apache.ranger.ugsyncutil.model.UnixSyncSourceInfo;
 import org.apache.ranger.unixusersync.config.UserGroupSyncConfig;
+import org.apache.ranger.unixusersync.model.UgsyncAuditInfo;
+import org.apache.ranger.unixusersync.model.UnixSyncSourceInfo;
 import org.apache.ranger.usergroupsync.UserGroupSink;
 import org.apache.ranger.usergroupsync.UserGroupSource;
 
@@ -81,11 +73,9 @@ public class UnixUserGroupBuilder implements UserGroupSource {
 	private long timeout = 0;
 
 	private UserGroupSyncConfig config = UserGroupSyncConfig.getInstance();
+	private Map<String,List<String>> user2GroupListMap;
+	private Map<String,List<String>> internalUser2GroupListMap;
 	private Map<String,String> groupId2groupNameMap;
-	private Map<String, Map<String, String>> sourceUsers; // Stores username and attr name & value pairs
-	private Map<String, Map<String, String>> sourceGroups; // Stores groupname and attr name & value pairs
-	private Map<String, Set<String>> sourceGroupUsers;
-	private Table<String, String, String> groupUserTable; // groupname, username, group id
 	private int minimumUserId  = 0;
 	private int minimumGroupId = 0;
 	private String unixPasswordFile;
@@ -178,20 +168,23 @@ public class UnixUserGroupBuilder implements UserGroupSource {
 		isUpdateSinkSucc = true;
 		if (isChanged() || isStartupFlag) {
 			buildUserGroupInfo();
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Users = " + sourceUsers.keySet());
-				LOG.debug("Groups = " + sourceGroups.keySet());
-				LOG.debug("GroupUsers = " + sourceGroupUsers.keySet());
-			}
 
-			try {
-				sink.addOrUpdateUsersGroups(sourceGroups, sourceUsers, sourceGroupUsers);
-			} catch (Throwable t) {
-				LOG.error("Failed to update ranger admin. Will retry in next sync cycle!!", t);
-				isUpdateSinkSucc = false;
+			for (Map.Entry<String, List<String>> entry : user2GroupListMap.entrySet()) {
+				String user = entry.getKey();
+				List<String> groups = entry.getValue();
+				try {
+					sink.addOrUpdateUser(user, groups);
+				} catch (Throwable t) {
+					LOG.error("sink.addOrUpdateUser failed with exception: " + t.getMessage()
+							+ ", for user: " + user
+							+ ", groups: " + groups);
+					isUpdateSinkSucc = false;
+				}
 			}
 		}
 		try {
+			unixSyncSourceInfo.setTotalUsersSynced(user2GroupListMap.size());
+			unixSyncSourceInfo.setTotalGroupsSynced(allGroups.size());
 			sink.postUserGroupAuditInfo(ugsyncAuditInfo);
 		} catch (Throwable t) {
 			LOG.error("sink.postUserGroupAuditInfo failed with exception: ", t);
@@ -201,11 +194,9 @@ public class UnixUserGroupBuilder implements UserGroupSource {
 	
 	
 	private void buildUserGroupInfo() throws Throwable {
+		user2GroupListMap = new HashMap<String,List<String>>();
 		groupId2groupNameMap = new HashMap<String, String>();
-		sourceUsers = new HashMap<>();
-		sourceGroups = new HashMap<>();
-		sourceGroupUsers = new HashMap<>();
-		groupUserTable = HashBasedTable.create();
+		internalUser2GroupListMap = new HashMap<String,List<String>>();
 		allGroups = new HashSet<>();
 
 		if (OS.startsWith("Mac")) {
@@ -219,20 +210,6 @@ public class UnixUserGroupBuilder implements UserGroupSource {
 			buildUnixUserList(LINUX_GET_ALL_USERS_CMD);
 		}
 
-		Iterator<String> groupUserTableIterator = groupUserTable.rowKeySet().iterator();
-		while (groupUserTableIterator.hasNext()) {
-			String groupName = groupUserTableIterator.next();
-			Map<String,String> groupUsersMap =  groupUserTable.row(groupName);
-			Set<String> userSet = new HashSet<String>();
-			for(String userName : groupUsersMap.keySet()){
-				//String transformUserName = userNameTransform(entry.getKey());
-				if (sourceUsers.containsKey(userName)) {
-					userSet.add(userName);
-				}
-			}
-			sourceGroupUsers.put(groupName, userSet);
-		}
-
 		lastUpdateTime = System.currentTimeMillis();
 
 		if (LOG.isDebugEnabled()) {
@@ -241,11 +218,11 @@ public class UnixUserGroupBuilder implements UserGroupSource {
 	}
 	
 	private void print() {
-		for(String user : sourceUsers.keySet()) {
+		for(String user : user2GroupListMap.keySet()) {
 			if (LOG.isDebugEnabled()) {
 				LOG.debug("USER:" + user);
 			}
-			Set<String> groups = groupUserTable.column(user).keySet();
+			List<String> groups = user2GroupListMap.get(user);
 			if (groups != null) {
 				for(String group : groups) {
 					if (LOG.isDebugEnabled()) {
@@ -315,11 +292,18 @@ public class UnixUserGroupBuilder implements UserGroupSource {
 					userName2uid.put(userName, userId);
 					String groupName = groupId2groupNameMap.get(groupId);
 					if (groupName != null) {
-						Map<String, String> userAttrMap = new HashMap<>();
-						userAttrMap.put("original_name", userName);
-						userAttrMap.put("full_name", userName);
-						sourceUsers.put(userName, userAttrMap);
-						groupUserTable.put(groupName, userName, groupId);
+						List<String> groupList = new ArrayList<String>();
+						groupList.add(groupName);
+						// do we already know about this use's membership to other groups?  If so add those, too
+						if (internalUser2GroupListMap.containsKey(userName)) {
+							List<String> map = internalUser2GroupListMap.get(userName);
+
+							// there could be duplicates
+							map.remove(groupName);
+							groupList.addAll(map);
+						}
+						user2GroupListMap.put(userName, groupList);
+						allGroups.addAll(groupList);
 					} else {
 						// we are ignoring the possibility that this user was present in /etc/groups.
 						LOG.warn("Group Name could not be found for group id: [" + groupId + "]. Skipping adding user [" + userName + "] with id [" + userId + "].");
@@ -345,18 +329,18 @@ public class UnixUserGroupBuilder implements UserGroupSource {
 			if (LOG.isDebugEnabled()) {
 				LOG.debug("Start drill down group members");
 			}
-			for (String userName : groupUserTable.columnKeySet()) {
+			for (Map.Entry<String, List<String>> entry : internalUser2GroupListMap.entrySet()) {
 				// skip users we already now about
-				if (sourceUsers.containsKey(userName))
+				if (user2GroupListMap.containsKey(entry.getKey()))
 					continue;
 
 				if (LOG.isDebugEnabled()) {
-					LOG.debug("Enumerating user " + userName);
+					LOG.debug("Enumerating user " + entry.getKey());
 				}
 
 				int numUserId = -1;
 				try {
-					numUserId = Integer.parseInt(userName2uid.get(userName));
+					numUserId = Integer.parseInt(userName2uid.get(entry.getKey()));
 				} catch (NumberFormatException nfe) {
 					numUserId = -1;
 				}
@@ -369,7 +353,7 @@ public class UnixUserGroupBuilder implements UserGroupSource {
 				// "id" is same across Linux / BSD / MacOSX
 				// gids are used as id might return groups with spaces, ie "domain users"
 				Process process = Runtime.getRuntime().exec(
-						new String[]{"bash", "-c", "id -G " + userName});
+						new String[]{"bash", "-c", "id -G " + entry.getKey()});
 
 				try {
 					reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -383,29 +367,26 @@ public class UnixUserGroupBuilder implements UserGroupSource {
 				}
 
 				if (line == null || line.trim().isEmpty()) {
-					LOG.warn("User " + userName + " could not be resolved");
+					LOG.warn("User " + entry.getKey() + " could not be resolved");
 					continue;
 				}
 
 				String[] gids = line.split(" ");
 
 				// check if all groups returned by id are visible to ranger
-				//ArrayList<String> allowedGroups = new ArrayList<String>();
+				ArrayList<String> allowedGroups = new ArrayList<String>();
 				for (String gid : gids) {
 					int numGroupId = Integer.parseInt(gid);
 					if (numGroupId < minimumGroupId)
 						continue;
 
 					String groupName = groupId2groupNameMap.get(gid);
-					if (groupName != null) {
-						groupUserTable.put(groupName, userName, gid);
-						//allowedGroups.add(groupName);
-					}
+					if (groupName != null)
+						allowedGroups.add(groupName);
 				}
-				Map<String, String> userAttrMap = new HashMap<>();
-				userAttrMap.put("original_name", userName);
-				userAttrMap.put("full_name", userName);
-				sourceUsers.put(userName, userAttrMap);
+
+				user2GroupListMap.put(entry.getKey(), allowedGroups);
+				allGroups.addAll(allowedGroups);
 			}
 			if (LOG.isDebugEnabled()) {
 				LOG.debug("End drill down group members");
@@ -438,14 +419,17 @@ public class UnixUserGroupBuilder implements UserGroupSource {
 			return;
 
 		groupId2groupNameMap.put(groupId, groupName);
-		Map<String, String> groupAttrMap = new HashMap<>();
-		groupAttrMap.put("original_name", groupName);
-		groupAttrMap.put("full_name", groupName);
-		sourceGroups.put(groupName, groupAttrMap);
 
 		if (groupMembers != null && !groupMembers.trim().isEmpty()) {
 			for (String user : groupMembers.split(",")) {
-				groupUserTable.put(groupName, user, groupId);
+				List<String> groupList = internalUser2GroupListMap.get(user);
+				if (groupList == null) {
+					groupList = new ArrayList<String>();
+					internalUser2GroupListMap.put(user, groupList);
+				}
+				if (!groupList.contains(groupName)) {
+					groupList.add(groupName);
+				}
 			}
 		}
 	}
@@ -568,18 +552,13 @@ public class UnixUserGroupBuilder implements UserGroupSource {
 	}
 
 	@VisibleForTesting
-	Map<String, Set<String>> getGroupUserListMap() {
-		return sourceGroupUsers;
+	Map<String,List<String>> getUser2GroupListMap() {
+		return user2GroupListMap;
 	}
 
 	@VisibleForTesting
 	Map<String,String> getGroupId2groupNameMap() {
 		return groupId2groupNameMap;
-	}
-
-	@VisibleForTesting
-	Set<String> getUsers() {
-		return sourceUsers.keySet();
 	}
 
 }

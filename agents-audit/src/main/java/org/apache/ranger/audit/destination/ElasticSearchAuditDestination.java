@@ -19,33 +19,24 @@
 
 package org.apache.ranger.audit.destination;
 
-import java.io.File;
-import java.security.PrivilegedActionException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthSchemeProvider;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
-import org.apache.http.client.config.AuthSchemes;
-import org.apache.http.config.Lookup;
-import org.apache.http.config.RegistryBuilder;
-import org.apache.http.impl.auth.SPNegoSchemeFactory;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.ranger.audit.model.AuditEventBase;
 import org.apache.ranger.audit.model.AuthzAuditEvent;
 import org.apache.ranger.audit.provider.MiscUtil;
-import org.apache.ranger.authorization.credutils.CredentialsProviderUtil;
-import org.apache.ranger.authorization.credutils.kerberos.KerberosCredentialsProvider;
 import org.elasticsearch.action.admin.indices.open.OpenIndexRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -53,11 +44,8 @@ import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 
-import javax.security.auth.Subject;
-import javax.security.auth.kerberos.KerberosTicket;
 
 public class ElasticSearchAuditDestination extends AuditDestination {
     private static final Log LOG = LogFactory.getLog(ElasticSearchAuditDestination.class);
@@ -69,7 +57,7 @@ public class ElasticSearchAuditDestination extends AuditDestination {
     public static final String CONFIG_PROTOCOL = "protocol";
     public static final String CONFIG_INDEX = "index";
     public static final String CONFIG_PREFIX = "ranger.audit.elasticsearch";
-    public static final String DEFAULT_INDEX = "ranger_audits";
+    public static final String DEFAULT_INDEX = "audit";
 
     private String index = "index";
     private volatile RestHighLevelClient client = null;
@@ -78,7 +66,6 @@ public class ElasticSearchAuditDestination extends AuditDestination {
     private int port;
     private String password;
     private String hosts;
-    private Subject subject;
 
     public ElasticSearchAuditDestination() {
         propPrefix = CONFIG_PREFIX;
@@ -99,7 +86,7 @@ public class ElasticSearchAuditDestination extends AuditDestination {
     }
 
     private String connectionString() {
-        return String.format(Locale.ROOT, "User:%s, %s://%s:%s/%s", user, protocol, hosts, port, index);
+        return String.format("%s://%s@%s:%s/%s", protocol, user, hosts, port, index);
     }
 
     @Override
@@ -129,7 +116,7 @@ public class ElasticSearchAuditDestination extends AuditDestination {
                     AuthzAuditEvent authzEvent = (AuthzAuditEvent) event;
                     String id = authzEvent.getEventId();
                     Map<String, Object> doc = toDoc(authzEvent);
-                    bulkRequest.add(new IndexRequest(index).id(id).source(doc));
+                    bulkRequest.add(new IndexRequest(index).id(id).source(doc).type(""));
                 }
             } catch (Exception ex) {
                 addFailedCount(eventList.size());
@@ -185,69 +172,30 @@ public class ElasticSearchAuditDestination extends AuditDestination {
                 }
             }
         }
-        if (subject != null) {
-            KerberosTicket ticket = CredentialsProviderUtil.getTGT(subject);
-            try {
-                if (new Date().getTime() > ticket.getEndTime().getTime()){
-                    client = null;
-                    CredentialsProviderUtil.ticketExpireTime80 = 0;
-                    newClient();
-                } else if (CredentialsProviderUtil.ticketWillExpire(ticket)) {
-                    subject = CredentialsProviderUtil.login(user, password);
-                }
-            } catch (PrivilegedActionException e) {
-                LOG.error("PrivilegedActionException:", e);
-                throw new RuntimeException(e);
-            }
-        }
         return client;
     }
 
     private final AtomicLong lastLoggedAt = new AtomicLong(0);
 
-    public static RestClientBuilder getRestClientBuilder(String urls, String protocol, String user, String password, int port) {
-        RestClientBuilder restClientBuilder = RestClient.builder(
-                MiscUtil.toArray(urls, ",").stream()
-                        .map(x -> new HttpHost(x, port, protocol))
-                        .<HttpHost>toArray(i -> new HttpHost[i])
-        );
-        if (StringUtils.isNotBlank(user) && StringUtils.isNotBlank(password) && !user.equalsIgnoreCase("NONE") && !password.equalsIgnoreCase("NONE")) {
-            if (password.contains("keytab") && new File(password).exists()) {
-                final KerberosCredentialsProvider credentialsProvider =
-                        CredentialsProviderUtil.getKerberosCredentials(user, password);
-                Lookup<AuthSchemeProvider> authSchemeRegistry = RegistryBuilder.<AuthSchemeProvider>create()
-                        .register(AuthSchemes.SPNEGO, new SPNegoSchemeFactory()).build();
-                restClientBuilder.setHttpClientConfigCallback(clientBuilder -> {
-                    clientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-                    clientBuilder.setDefaultAuthSchemeRegistry(authSchemeRegistry);
-                    return clientBuilder;
-                });
-            } else {
-                final CredentialsProvider credentialsProvider =
-                        CredentialsProviderUtil.getBasicCredentials(user, password);
-                restClientBuilder.setHttpClientConfigCallback(clientBuilder ->
-                        clientBuilder.setDefaultCredentialsProvider(credentialsProvider));
-            }
-        } else {
-            LOG.error("ElasticSearch Credentials not provided!!");
-            final CredentialsProvider credentialsProvider = null;
-            restClientBuilder.setHttpClientConfigCallback(clientBuilder ->
-                    clientBuilder.setDefaultCredentialsProvider(credentialsProvider));
-        }
-        return restClientBuilder;
-    }
-
     private RestHighLevelClient newClient() {
         try {
-            if (StringUtils.isNotBlank(user) && StringUtils.isNotBlank(password) && password.contains("keytab") && new File(password).exists()) {
-                subject = CredentialsProviderUtil.login(user, password);
+            final CredentialsProvider credentialsProvider;
+            if(!user.isEmpty()) {
+                credentialsProvider = new BasicCredentialsProvider();
+                credentialsProvider.setCredentials(AuthScope.ANY,
+                        new UsernamePasswordCredentials(user, password));
+            } else {
+                credentialsProvider = null;
             }
-            RestClientBuilder restClientBuilder =
-                    getRestClientBuilder(hosts, protocol, user, password, port);
-            RestHighLevelClient restHighLevelClient = new RestHighLevelClient(restClientBuilder);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Initialized client");
-            }
+
+            RestHighLevelClient restHighLevelClient = new RestHighLevelClient(
+                    RestClient.builder(
+                            MiscUtil.toArray(hosts, ",").stream()
+                                    .map(x -> new HttpHost(x, port, protocol))
+                                    .<HttpHost>toArray(i -> new HttpHost[i])
+                    ).setHttpClientConfigCallback(clientBuilder ->
+                            (credentialsProvider != null) ? clientBuilder.setDefaultCredentialsProvider(credentialsProvider) : clientBuilder));
+            LOG.debug("Initialized client");
             boolean exits = false;
             try {
                 exits = restHighLevelClient.indices().open(new OpenIndexRequest(this.index), RequestOptions.DEFAULT).isShardsAcknowledged();
@@ -255,9 +203,7 @@ public class ElasticSearchAuditDestination extends AuditDestination {
                 LOG.warn("Error validating index " + this.index);
             }
             if(exits) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Index exists");
-                }
+                LOG.debug("Index exists");
             } else {
                 LOG.info("Index does not exist");
             }
@@ -282,7 +228,7 @@ public class ElasticSearchAuditDestination extends AuditDestination {
         if (urls != null) {
             urls = urls.trim();
         }
-        if ("NONE".equalsIgnoreCase(urls)) {
+        if (urls != null && urls.equalsIgnoreCase("NONE")) {
             urls = null;
         }
         return urls;
@@ -290,9 +236,7 @@ public class ElasticSearchAuditDestination extends AuditDestination {
 
     private String getStringProperty(Properties props, String propName, String defaultValue) {
         String value = MiscUtil.getStringProperty(props, propName);
-        if (null == value) {
-            return defaultValue;
-        }
+        if (null == value) return defaultValue;
         return value;
     }
 

@@ -76,6 +76,7 @@ define(function(require) {
                 collection: new RangerPolicyList(),
                 groupList: new VXGroupList(),
                 userList: new VXUserList(),
+                urlQueryParams: tab.indexOf("?") !== -1 ? tab.substring(tab.indexOf("?") + 1) : undefined,
             }));
         },
         auditReportAction: function(tab) {
@@ -137,6 +138,7 @@ define(function(require) {
             App.rContent.show(new view({
                 collection: userList,
                 tab: tab.split('?')[0],
+                urlQueryParams: tab.indexOf("?") !== -1 ? tab.substring(tab.indexOf("?") + 1) : undefined,
             }));
         },
         userCreateAction: function() {
@@ -378,6 +380,7 @@ define(function(require) {
                 App.rContent.show(new view({
                     rangerService: rangerService,
                     collection: rangerPolicyList,
+                    urlQueryParams: policyType.indexOf("?") !== -1 ? policyType.substring(policyType.indexOf("?") + 1) : undefined,
                 }));
             });
         },
@@ -457,6 +460,7 @@ define(function(require) {
 
             App.rContent.show(new view({
                 collection: new ModulePermissionList(),
+                urlQueryParams: argument.indexOf("?") !== -1 ? argument.substring(argument.indexOf("?") + 1) : undefined,
             }));
 
         },
@@ -501,6 +505,7 @@ define(function(require) {
                 collection: new KmsKeyList(),
                 kmsServiceName: kmsServiceName.split("?")[0],
                 kmsManagePage: kmsManagePage,
+                urlQueryParams: kmsServiceName.indexOf("?") !== -1 ? kmsServiceName.substring(kmsServiceName.indexOf("?") + 1) : undefined,
             }));
         },
         kmsKeyCreateAction: function(kmsServiceName) {
@@ -529,7 +534,6 @@ define(function(require) {
             var RangerZoneList = require('collections/RangerZoneList');
             var rangerServiceList = new RangerServiceList();
             var rangerZoneList = new RangerZoneList();
-            rangerServiceList.setPageSize(200);
             rangerServiceList.fetch({
                 cache: false,
                 async: false
@@ -555,7 +559,6 @@ define(function(require) {
             var RangerZoneList = require('collections/RangerZoneList');
             var zoneSerivesColl = new RangerZoneList();
             var rangerServiceList = new RangerServiceList();
-            rangerServiceList.setPageSize(200);
             rangerServiceList.fetch({
                 cache: false,
             }).done(function() {
@@ -583,7 +586,6 @@ define(function(require) {
                 id: zoneId
             })
             var zoneSerivesColl = new RangerZoneList();
-            rangerServiceList.setPageSize(200);
             rangerServiceList.fetch({
                 cache: false,
                 async: false,

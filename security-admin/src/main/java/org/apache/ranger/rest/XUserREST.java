@@ -17,13 +17,11 @@
  * under the License.
  */
 
-package org.apache.ranger.rest;
+ package org.apache.ranger.rest;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
-import java.util.ArrayList;
-import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -77,8 +75,6 @@ import org.apache.ranger.service.XPermMapService;
 import org.apache.ranger.service.XResourceService;
 import org.apache.ranger.service.XUserPermissionService;
 import org.apache.ranger.service.XUserService;
-import org.apache.ranger.ugsyncutil.model.GroupUserInfo;
-import org.apache.ranger.ugsyncutil.model.UsersGroupRoleAssignments;
 import org.apache.ranger.view.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
@@ -310,7 +306,7 @@ public class XUserREST {
 	public VXUserGroupInfo createXUserGroupFromMap(VXUserGroupInfo vXUserGroupInfo) {
 		return  xUserMgr.createXUserGroupFromMap(vXUserGroupInfo);
 	}
-
+	
 	@POST
 	@Path("/secure/users")
 	@Produces({ "application/xml", "application/json" })
@@ -1365,47 +1361,5 @@ public class XUserREST {
 	public VXUgsyncAuditInfo postUserGroupAuditInfo(VXUgsyncAuditInfo vxUgsyncAuditInfo) {
 
 		return xUserMgr.postUserGroupAuditInfo(vxUgsyncAuditInfo);
-	}
-
-	@GET
-	@Path("/ugsync/groupusers")
-	@Produces({ "application/xml", "application/json" })
-	@PreAuthorize("hasRole('ROLE_SYS_ADMIN')")
-	public Map<String, Set<String>> getAllGroupUsers() {
-		return rangerDaoManager.getXXGroupUser().findUsersByGroupIds();
-	}
-
-	@POST
-	@Path("/ugsync/users")
-	@Produces({ "application/xml", "application/json" })
-	@PreAuthorize("hasRole('ROLE_SYS_ADMIN')")
-	public String addOrUpdateUsers(VXUserList users) {
-		int ret = xUserMgr.createOrUpdateXUsers(users);
-		return String.valueOf(ret);
-	}
-
-	@POST
-	@Path("/ugsync/groups")
-	@Produces({ "application/xml", "application/json" })
-	@PreAuthorize("hasRole('ROLE_SYS_ADMIN')")
-	public int addOrUpdateGroups(VXGroupList groups) {
-		int ret = xUserMgr.createOrUpdateXGroups(groups);
-		return ret;
-	}
-
-	@POST
-	@Path("/ugsync/groupusers")
-	@Produces({ "application/xml", "application/json" })
-	@PreAuthorize("hasRole('ROLE_SYS_ADMIN')")
-	public int addOrUpdateGroupUsersList(List<GroupUserInfo> groupUserInfoList) {
-		return xUserMgr.createOrDeleteXGroupUserList(groupUserInfoList);
-	}
-
-	@POST
-	@Path("/users/roleassignments")
-	@Produces({ "application/xml", "application/json" })
-	@PreAuthorize("hasRole('ROLE_SYS_ADMIN')")
-	public List<String> setXUserRolesByName(UsersGroupRoleAssignments ugRoleAssignments) {
-		return xUserMgr.updateUserRoleAssignments(ugRoleAssignments);
 	}
 }

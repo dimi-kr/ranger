@@ -76,7 +76,7 @@ function doLogin() {
 		},
 		error : function(jqXHR, textStatus, err ) {
 			$('#signIn').removeAttr('disabled');
-			$('#signInLoading').hide();
+			$('#signInLoading').css("visibility", "hidden");
 
 			if(jqXHR.status && jqXHR.status == 412){
 				$('#errorBox').hide();
@@ -102,7 +102,7 @@ $(function() {
   	// register handlers
 	$('#signIn').on('click', function() {
 		$('#signIn').attr('disabled',true);
-		$('#signInLoading').show();
+		$('#signInLoading').css("visibility", "visible");
 		doLogin();
 		return false;
 	});

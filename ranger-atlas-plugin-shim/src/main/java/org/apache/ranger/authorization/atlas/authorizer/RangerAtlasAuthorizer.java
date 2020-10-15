@@ -25,7 +25,6 @@ import org.apache.atlas.authorize.AtlasSearchResultScrubRequest;
 import org.apache.atlas.authorize.AtlasRelationshipAccessRequest;
 import org.apache.atlas.authorize.AtlasTypeAccessRequest;
 import org.apache.atlas.authorize.AtlasAuthorizationException;
-import org.apache.atlas.authorize.AtlasTypesDefFilterRequest;
 import org.apache.atlas.authorize.AtlasAuthorizer;
 import org.apache.ranger.plugin.classloader.RangerPluginClassLoader;
 import org.slf4j.Logger;
@@ -221,27 +220,6 @@ public class RangerAtlasAuthorizer implements AtlasAuthorizer {
 		}
 	}
 
-	@Override
-	public void filterTypesDef(AtlasTypesDefFilterRequest request) throws AtlasAuthorizationException {
-
-		if (isDebugEnabled) {
-			LOG.debug("==> filterTypesDef(" + request + ")");
-		}
-
-		try {
-			activatePluginClassLoader();
-
-			rangerAtlasAuthorizerImpl.filterTypesDef(request);
-		} finally {
-			deactivatePluginClassLoader();
-		}
-
-		if (isDebugEnabled) {
-			LOG.debug("<== filterTypesDef(): " + request);
-		}
-
-	}
-
     private void activatePluginClassLoader() {
 		if(rangerPluginClassLoader != null) {
 			rangerPluginClassLoader.activate();
@@ -253,7 +231,4 @@ public class RangerAtlasAuthorizer implements AtlasAuthorizer {
 			rangerPluginClassLoader.deactivate();
 		}
 	}
-
-
-
 }

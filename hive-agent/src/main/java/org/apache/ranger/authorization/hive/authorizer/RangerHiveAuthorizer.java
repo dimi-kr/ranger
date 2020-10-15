@@ -347,13 +347,7 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 			if (LOG.isDebugEnabled()) {
 				LOG.debug("<== getCurrentRoleNamesFromRanger() for user " + user);
 			}
-
-			List<String> userRoles = hivePlugin.getUserRoles(user, auditHandler);
-
-			if (userRoles == null) {
-				userRoles = Collections.emptyList();
-			}
-
+			Set<String> userRoles = new HashSet<String>(hivePlugin.getUserRoles(user, auditHandler));
 			for (String role : userRoles) {
 				if (!ROLE_ADMIN.equalsIgnoreCase(role)) {
 					ret.add(role);
@@ -1841,9 +1835,6 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 			case CREATEDATABASE:
 			case CREATETABLE:
 			case CREATETABLE_AS_SELECT:
-			case CREATEFUNCTION:
-			case DROPFUNCTION:
-			case RELOADFUNCTION:
 			case ALTERDATABASE:
 			case ALTERDATABASE_LOCATION:
 			case ALTERDATABASE_OWNER:
@@ -1885,8 +1876,6 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 			case ALTERPARTITION_MERGEFILES:
 			case ALTERTBLPART_SKEWED_LOCATION:
 			case ALTERTABLE_OWNER:
-			case ADD:
-			case DELETE:
 			case QUERY:
 				ret = FsAction.ALL;
 				break;
@@ -1915,6 +1904,9 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 			case SHOWPARTITIONS:
 			case SHOWLOCKS:
 			case SHOWCONF:
+			case CREATEFUNCTION:
+			case DROPFUNCTION:
+			case RELOADFUNCTION:
 			case CREATEMACRO:
 			case DROPMACRO:
 			case CREATEVIEW:
@@ -1948,6 +1940,8 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 			case SET:
 			case RESET:
 			case DFS:
+			case ADD:
+			case DELETE:
 			case COMPILE:
 			case START_TRANSACTION:
 			case COMMIT:

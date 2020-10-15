@@ -94,17 +94,8 @@ public class SolrAuditDestination extends AuditDestination {
 
 	@Override
 	public void stop() {
-		LOG.info("SolrAuditDestination.stop() called..");
+		super.stop();
 		logStatus();
-		try {
-			if (solrClient != null) {
-				solrClient.close();
-			}
-		} catch (IOException ioe) {
-			LOG.error("Error while stopping slor!", ioe);
-		} finally {
-			solrClient = null;
-		}
 	}
 
 	synchronized void connect() {

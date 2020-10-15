@@ -80,9 +80,7 @@ public class PrestoClient extends BaseClient implements Closeable {
 
     Properties prestoProperties = new Properties();
     prestoProperties.put(PRESTO_USER_NAME_PROP, prop.getProperty(HadoopConfigHolder.RANGER_LOGIN_USER_NAME_PROP));
-    if (prop.getProperty(HadoopConfigHolder.RANGER_LOGIN_PASSWORD) != null) {
-      prestoProperties.put(PRESTO_PASSWORD_PROP, prop.getProperty(HadoopConfigHolder.RANGER_LOGIN_PASSWORD));
-    }
+    prestoProperties.put(PRESTO_PASSWORD_PROP, prop.getProperty(HadoopConfigHolder.RANGER_LOGIN_PASSWORD));
 
     if (driverClassName != null) {
       try {

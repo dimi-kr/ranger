@@ -19,27 +19,35 @@
 
 package org.apache.ranger.usergroupsync;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import org.apache.commons.collections.CollectionUtils;
+import java.util.*;
+
 import org.apache.ranger.unixusersync.process.PolicyMgrUserGroupBuilder;
 
 public class PolicyMgrUserGroupBuilderTest extends PolicyMgrUserGroupBuilder {
         private Set<String> allGroups;
         private Set<String> allUsers;
-        private Map<String, Set<String>> groupUsers;
-
-        public PolicyMgrUserGroupBuilderTest() {
-                super();
-        }
 
         @Override
         public void init() throws Throwable {
                 allGroups = new HashSet<>();
                 allUsers = new HashSet<>();
-                groupUsers = new HashMap<>();
+        }
+
+        @Override
+        public void addOrUpdateUser(String user, List<String> groups) {
+                allGroups.addAll(groups);
+                allUsers.add(user);
+                //System.out.println("Username: " + user + " and associated groups: " + groups);
+        }
+
+        @Override
+        public void addOrUpdateGroup(String group, Map<String, String> groupAttrs ) {
+                allGroups.add(group);
+        }
+
+        @Override
+        public void addOrUpdateGroup(String group, List<String> users) {
+                addOrUpdateGroup(group, new HashMap<String, String>());
         }
 
         public int getTotalUsers() {
@@ -58,33 +66,4 @@ public class PolicyMgrUserGroupBuilderTest extends PolicyMgrUserGroupBuilder {
         public Set<String> getAllUsers() {
                 return allUsers;
         }
-
-        public int getGroupsWithNoUsers() {
-                int groupsWithNoUsers = 0;
-                for (String group : groupUsers.keySet()) {
-                        if (CollectionUtils.isEmpty(groupUsers.get(group))) {
-                                groupsWithNoUsers++;
-                        }
-                }
-                return groupsWithNoUsers;
-        }
-
-        @Override
-        public void addOrUpdateUsersGroups(Map<String, Map<String, String>> sourceGroups,
-                                           Map<String, Map<String, String>> sourceUsers,
-                                           Map<String, Set<String>> sourceGroupUsers) throws Throwable {
-
-                for (String userdn : sourceUsers.keySet()) {
-                        //System.out.println("Username: " + sourceUsers.get(userdn).get("original_name"));
-                        allUsers.add(userNameTransform(sourceUsers.get(userdn).get("original_name")));
-                }
-                for (String groupdn : sourceGroups.keySet()) {
-                        //System.out.println("Groupname: " + sourceGroups.get(groupdn).get("original_name"));
-                        allGroups.add(groupNameTransform(sourceGroups.get(groupdn).get("original_name")));
-                }
-                groupUsers = sourceGroupUsers;
-                //System.out.println("Username: " + user + " and associated groups: " + groups);
-        }
-
-
 }

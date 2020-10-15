@@ -76,7 +76,7 @@ public class PatchForXGlobalState_J10036 extends BaseLoader {
 				String roleVersion = appDataVersionJson.get("RangerRoleVersion");
 				appDataVersionJson.put("Version", roleVersion);
 				appDataVersionJson.remove("RangerRoleVersion");
-				globalState.setAppData(new Gson().toJson(appDataVersionJson));
+				globalState.setAppData(appDataVersionJson.toString());
 				daoManager.getXXGlobalState().update(globalState);
 			}
 		}
